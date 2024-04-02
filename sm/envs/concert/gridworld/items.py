@@ -52,6 +52,40 @@ class ItemKind_encode():
     encoding[ItemKind.AGENT_ATTACHED] = AGENT_ATTACHED
     encoding[ItemKind.H_AGENT_ATTACHED] = H_AGENT_ATTACHED
 
+class ItemKind_onehot():
+    """
+    one hot encoding of ItemKind, used for vector observations
+    """
+    encoding = {}
+    num_itemkind = 8 # the number of distinct item kinds
+
+    wall = np.zeros(shape=(num_itemkind), dtype='int32')
+    object_ = np.zeros(shape=(num_itemkind), dtype='int32')
+    goal = np.zeros(shape=(num_itemkind), dtype='int32')
+    agent = np.zeros(shape=(num_itemkind), dtype='int32')
+    object_attached = np.zeros(shape=(num_itemkind), dtype='int32')
+    agent_attached = np.zeros(shape=(num_itemkind), dtype='int32')
+    h_agent = np.zeros(shape=(num_itemkind), dtype='int32')
+    h_agent_attached = np.zeros(shape=(num_itemkind), dtype='int32')
+
+    wall[0] = 1
+    object_[1] = 1
+    goal[2] = 1
+    agent[3] = 1
+    h_agent[4] = 1
+    object_attached[5] = 1
+    agent_attached[6] = 1
+    h_agent_attached[7] = 1
+
+    encoding[ItemKind.WALL] = wall
+    encoding[ItemKind.OBJECT] = object_
+    encoding[ItemKind.GOAL] = goal
+    encoding[ItemKind.AGENT] = agent
+    encoding[ItemKind.H_AGENT] = h_agent
+    encoding[ItemKind.OBJECT_ATTACHED] = object_attached
+    encoding[ItemKind.AGENT_ATTACHED] = agent_attached
+    encoding[ItemKind.H_AGENT_ATTACHED] = h_agent_attached
+
 
 
 

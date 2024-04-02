@@ -364,9 +364,15 @@ class WarehouseGame (games.GameBase_multiagent):
                         # if 'heuristic_agent' not in agent:
                         if agent_obj.picked_object.attachable != True:
                             print(" ------ agents have succcessful attachment of the object -----")
-                            step_data.add_reward(0.3, agent)
-                            step_data[agent]["infos"]["pick_success"] = float(1.0)
-                            step_data[agent]["infos"]["pick_failure"] = float(0.0)
+                            carriers = [self.get_key_from_value(self.agent_dict, carrier) for carrier in agent_obj.picked_object.carriers]
+                            
+                            for carrier in carriers:
+                                step_data.add_reward(0.15, carrier) #adding sucessful pick reward for bot agents
+
+                            
+
+                        step_data[agent]["infos"]["pick_success"] = float(1.0)
+                        step_data[agent]["infos"]["pick_failure"] = float(0.0)
                         
                     else:
                         # if 'heuristic_agent' not in agent:
@@ -379,11 +385,12 @@ class WarehouseGame (games.GameBase_multiagent):
                     step_data[agent]["infos"]["move_failure"] = float(0.0)
                     step_data[agent]["infos"]["pick_failure"] = float(0.0)
                     step_data[agent]["infos"]["pick_success"] = float(0.0)
-                    object_attached = agent_obj.picked_object.attachable #whether the object attached by the agent was attached or not
+                    object_picked = agent_obj.picked_object
+                    object_attachable = agent_obj.picked_object.attachable #whether the object attached by the agent was attached or not
+                    carriers_ = [self.get_key_from_value(self.agent_dict, carrier) for carrier in object_picked.carriers]
     
                     if agent_obj.attached and agent_obj.picked_object.attachable != True:
-                        carriers_ = [self.get_key_from_value(self.agent_dict, carrier) for carrier in agent_obj.picked_object.carriers]
-
+                        
                         #print([step_data[x]['action'] for x in carriers_],"wht are actions and their carriers",[ self.get_key_from_value(self.agent_dict, carrier) for carrier in agent_obj.picked_object.carriers])
 
                         if self.heuristic:
@@ -403,6 +410,7 @@ class WarehouseGame (games.GameBase_multiagent):
                             else:
                                 success = agent_obj.drop()
                     else:
+                        
                        
                         success = agent_obj.drop()
 
@@ -412,11 +420,16 @@ class WarehouseGame (games.GameBase_multiagent):
                     
                     if success:
 
+                        #TODO giving unnecessary reward in dropping
+
                         step_data[agent]["infos"]["drop_failure"] = float(1.0)
-                        if 'heuristic' in agent and object_attached is False:
+                        goal_locs = [g.loc for g in self.goals]
+                        if 'heuristic' in agent and object_picked.dropped and any(np.array_equal(object_picked.loc, j) for j in goal_locs) :
                             print("----heuristic agent has driven and drop the composite object correctly----")
 
-                            step_data.add_reward(0.4, agent) # i.e heuristic agent has driven and drop the composite object correctly
+                            for carrier in carriers_:
+
+                                step_data.add_reward(0.4, carrier) # i.e heuristic agent has driven and drop the composite object correctly, add reward for both agents
 
 
                     else:
@@ -465,7 +478,7 @@ class WarehouseGame (games.GameBase_multiagent):
 
 
         if len(dropped_objs) == self.num_objects:
-           print("++++++++ ALL OBJECTS ON GOALS ++++++++")
+           print("++++++++++++++++++++++++++++++++++++++++++++++++++ ALL OBJECTS ON GOALS +++++++++++++++++++++++++++++++++++++++++++++++++")
 
         return len(dropped_objs) == self.num_objects
 

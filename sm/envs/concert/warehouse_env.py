@@ -17,7 +17,7 @@ from PIL import Image
 from gym import ObservationWrapper
 
 import sys
-from sm.envs.concert.gridworld.items import ItemKind, ItemBase
+from sm.envs.concert.gridworld.items import ItemKind, ItemBase, ItemKind_onehot
 
 
 import matplotlib.pyplot as plt
@@ -160,7 +160,7 @@ class WarehouseMultiEnv(MultiAgentEnv):
         else:
             # vector observation: a flattened 3-dim state with one-hot encoded items (=> vector) on grid locations (=> matrix);
     
-            observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1],), low=0, high=19, dtype="uint8")
+            observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1] * ItemKind_onehot.num_itemkind + 2 + ItemKind_onehot.num_itemkind,),low=-np.inf, high=np.inf, dtype=np.float32)
 
 
         self.observation_space= [observation_space for _ in range(self.n_agents)]
@@ -193,6 +193,15 @@ class WarehouseMultiEnv(MultiAgentEnv):
                 
             action_dict_game[agent_obj] = Actions_list[actions[agent_index][0]] #get move from policy 
 
+            # print("input the action for", agent)
+            # act = input()
+            # print(act)
+            # action_dict_game[agent_obj] = act
+            
+
+
+
+
 
    
 
@@ -201,6 +210,7 @@ class WarehouseMultiEnv(MultiAgentEnv):
                     
     
         self.game.step(action_dict_game)
+        # self.save_image()
         
         terminateds["__all__"] = self.game.done
 
@@ -278,6 +288,7 @@ class WarehouseMultiEnv(MultiAgentEnv):
         mpl_img.set_data(img)
         fig.canvas.draw()
         plt.savefig("test_img.jpg")
+        plt.close()
    
 
 
@@ -327,8 +338,19 @@ class WarehouseMultiEnv(MultiAgentEnv):
         return obs_n
 
     def get_obs_agent(self, agent_id):
+
+        grid_world = self.render(mode="rgb_array", image_observation=self.image_observation)
+        if agent_id % 2 == 0:
+            agent_id = f"agent_{agent_id}"
+        else:
+            agent_id = f"heuristic_agent_{agent_id}"
+
+        agent_loc = self.game.agent_dict[agent_id].loc
+
+        agent_encode = ItemKind_onehot.encoding[self.game.agent_dict[agent_id].kind]
+
         
-        return self.render(mode="rgb_array", image_observation=self.image_observation)
+        return np.concatenate([agent_loc, agent_encode, grid_world], axis = 0)
 
 
             # return build_obs(self.env,

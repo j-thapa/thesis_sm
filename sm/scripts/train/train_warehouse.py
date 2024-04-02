@@ -112,7 +112,7 @@ def parse_args(args, parser):
 
         
     parser.add_argument('--reward_game_success', type=float, default=1.0)
-    parser.add_argument('--reward_each_action', type=float, default=-0.03)
+    parser.add_argument('--reward_each_action', type=float, default=-0.01)
     parser.add_argument('--reward_illegal_action', type=float, default=-0.07)
     parser.add_argument("--dynamic_obstacle_randomness", type = float, default=0)
     parser.add_argument("--heuristic_agent_randomness", type = float, default=0.3)
@@ -120,9 +120,9 @@ def parse_args(args, parser):
     parser.add_argument("--action_masking", action='store_true', default=True)
     parser.add_argument("--image_observation", action='store_true', default=False)
     parser.add_argument("--obs_stacking", action='store_true', default=False)
-    parser.add_argument("--num_objects", type = int, default=3)
+    parser.add_argument("--num_objects", type = int, default=1)
     parser.add_argument("--pair_agents", type = int, default=2)
-    parser.add_argument("--max_steps", type = int, default=150)
+    parser.add_argument("--max_steps", type = int, default=200)
     parser.add_argument("--stacked_layers", type = int, default=3)
     parser.add_argument("--obstacle", action='store_true', default=False)
     parser.add_argument("--goal_area", action='store_true', default= False)
