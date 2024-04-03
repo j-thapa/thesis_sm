@@ -367,7 +367,7 @@ class WarehouseGame (games.GameBase_multiagent):
                             carriers = [self.get_key_from_value(self.agent_dict, carrier) for carrier in agent_obj.picked_object.carriers]
                             
                             for carrier in carriers:
-                                step_data.add_reward(0.15, carrier) #adding sucessful pick reward for bot agents
+                                step_data.add_reward(0.2, carrier) #adding sucessful pick reward for bot agents
 
                             
 
@@ -446,11 +446,11 @@ class WarehouseGame (games.GameBase_multiagent):
 
         # Check game end
 
-        if self._check_game_success():
+        if self._check_pick_success():
             
             for agent in self.agent_ids:
 
-                step_data.add_reward(self.reward_game_success * 1.5, agent) # game success reward for agent getting attached
+                step_data.add_reward(self.reward_game_success, agent) # game success reward for agent getting attached
               
                 step_data[agent]["infos"]["game_success"] = float(1.0)
 
@@ -481,6 +481,19 @@ class WarehouseGame (games.GameBase_multiagent):
            print("++++++++++++++++++++++++++++++++++++++++++++++++++ ALL OBJECTS ON GOALS +++++++++++++++++++++++++++++++++++++++++++++++++")
 
         return len(dropped_objs) == self.num_objects
+
+
+    def _check_pick_success(self) -> bool:
+
+        #all objects are in goal then game success
+
+        picked_objs = [i for i in self.objects if i.attachable != True]
+
+
+        if len(picked_objs) == self.num_objects:
+           print("++++++++++++++++++++++++++++++++++++++++++++++++++ ALL OBJECTS picked +++++++++++++++++++++++++++++++++++++++++++++++++")
+
+        return len(picked_objs) == self.num_objects
 
         
   

@@ -8,6 +8,8 @@ def get_config():
     only used in <env>.
 
     Prepare parameters:
+        --separated 
+            by default True, will use base of runner for separated policies like HAPPO-HATRPO
         --algorithm_name <algorithm_name>
             specifiy the algorithm, including `["mat", "mat_dec"]`
         --experiment_name <str>
@@ -84,6 +86,14 @@ def get_config():
             RMSprop optimizer epsilon (default: 1e-5)
         --weight_decay <float>
             coefficience of weight decay (default: 0)
+
+    TRPO parameters:
+        --kl_threshold <float>
+            the threshold of kl-divergence (default: 0.01)
+        --ls_step <int> 
+            the step of line search (default: 10)
+        --accept_ratio <float>
+            accept ratio of loss improve (default: 0.5)
     
     PPO parameters:
         --ppo_epoch <int>
@@ -157,8 +167,10 @@ def get_config():
         description='onpolicy', formatter_class=argparse.RawDescriptionHelpFormatter)
 
     # prepare parameters
+    parser.add_argument("--separated", action='store_true', default=False, help=" whether to use separated policies based runner like HAPPO-HATRPO")
     parser.add_argument("--algorithm_name", type=str,
-                        default='mat', choices=["mat", "mat_dec", "mat_encoder", "mat_decoder", "mat_gru", "marwkv_v4", "marwkv_v5", "marwkv_v6"])
+                        default='mat', choices=["mat", "mat_dec", "mat_encoder", "mat_decoder", "mat_gru", "marwkv_v4", "marwkv_v5", "marwkv_v6"
+                        , "happo", "hatrpo"])
 
     parser.add_argument("--experiment_name", type=str, default="check", help="an identifier to distinguish different experiment.")
     parser.add_argument("--seed", type=int, default=1, help="Random seed for numpy/torch")
@@ -228,6 +240,14 @@ def get_config():
     parser.add_argument("--opti_eps", type=float, default=1e-5,
                         help='RMSprop optimizer epsilon (default: 1e-5)')
     parser.add_argument("--weight_decay", type=float, default=0)
+
+    # trpo parameters
+    parser.add_argument("--kl_threshold", type=float, 
+                        default=0.01, help='the threshold of kl-divergence (default: 0.01)')
+    parser.add_argument("--ls_step", type=int, 
+                        default=10, help='number of line search (default: 10)')
+    parser.add_argument("--accept_ratio", type=float, 
+                        default=0.5, help='accept ratio of loss improve (default: 0.5)')
 
     # ppo parameters
     parser.add_argument("--ppo_epoch", type=int, default=15,

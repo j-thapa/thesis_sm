@@ -354,6 +354,9 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
         agent_loc = self.game.agent_dict[agent_id].loc
 
+        if self.image_observation:
+            return grid_world
+
         agent_encode = [ItemKind_encode.encoding[self.game.agent_dict[agent_id].kind]]
 
 

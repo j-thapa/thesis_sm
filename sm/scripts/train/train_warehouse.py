@@ -14,6 +14,7 @@ from sm.config import get_config
 from sm.envs.concert.warehouse_env import WarehouseMultiEnv #import warehoisebev
 from sm.envs.env_wrappers import ShareSubprocVecEnv, ShareDummyVecEnv
 from sm.runner.shared.warehouse_runner import WarehouseRunner as Runner
+from sm.runner.separated.warehouse_runner import WarehouseRunner as Sep_Runner
 
 
 """Train script for concert Warehouse."""
@@ -135,6 +136,7 @@ def parse_args(args, parser):
     parser.add_argument("--heuristic_agent", action='store_true', default= True)
     parser.add_argument("--random_agent", action='store_true', default= False)
     parser.add_argument("--goals_coord", default=  [(8,2),(5,2),(7,4),(2,5),(3,8)])
+    parser.add_argument("--use_single_network", action='store_true', default=False)
 
 
     #aadd here params
@@ -224,7 +226,10 @@ def main(args):
         "run_dir": run_dir
     }
 
-    runner = Runner(config)
+    if all_args.separated:
+        runner = Sep_Runner(config)
+    else:
+        runner = Runner(config)
     runner.run()
 
     # post process
