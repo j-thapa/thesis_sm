@@ -88,7 +88,7 @@ class SMPolicy:
         print(f'Total params: {Total_params}')
         print(f'Trainable params: {Trainable_params}')
         print(f'Non-trainable params: {NonTrainable_params}')
-        time.sleep(9)
+        # time.sleep(9)
 
         self.optimizer = torch.optim.Adam(self.seq_model.parameters(),
                                           lr=self.lr, eps=self.opti_eps,

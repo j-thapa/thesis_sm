@@ -17,7 +17,7 @@ from PIL import Image
 from gym import ObservationWrapper
 
 import sys
-from sm.envs.concert.gridworld.items import ItemKind, ItemBase, ItemKind_onehot
+from sm.envs.concert.gridworld.items import ItemKind, ItemBase, ItemKind_onehot, ItemKind_encode
 
 
 import matplotlib.pyplot as plt
@@ -55,6 +55,11 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
         self._agent_ids = []
         self.heuristic_agent  = kwargs['all_args']
+
+
+        # add for randomizing
+        self.agent_permutation = None
+        self.agent_recovery = None
 
         for num in range(self.n_agents):
             if num % 2 == 0 :
@@ -160,7 +165,9 @@ class WarehouseMultiEnv(MultiAgentEnv):
         else:
             # vector observation: a flattened 3-dim state with one-hot encoded items (=> vector) on grid locations (=> matrix);
     
-            observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1] * ItemKind_onehot.num_itemkind + 2 + ItemKind_onehot.num_itemkind,),low=-np.inf, high=np.inf, dtype=np.float32)
+            #observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1] * ItemKind_onehot.num_itemkind + 2 + ItemKind_onehot.num_itemkind,),low=-np.inf, high=np.inf, dtype=np.float32)
+            #for not one hot encoding
+            observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1]  + 2 + 1,),low=-np.inf, high=np.inf, dtype=np.float32)
 
 
         self.observation_space= [observation_space for _ in range(self.n_agents)]
@@ -183,6 +190,9 @@ class WarehouseMultiEnv(MultiAgentEnv):
         self.timestep += 1
         action_dict_game = {} # maps agent objects to action
 
+        # add for randomizing
+        actions = np.array(actions)[self.agent_recovery].tolist()
+
 
         for agent in self._agent_ids :
 
@@ -199,13 +209,6 @@ class WarehouseMultiEnv(MultiAgentEnv):
             # action_dict_game[agent_obj] = act
             
 
-
-
-
-
-   
-
-        
   
                     
     
@@ -222,46 +225,37 @@ class WarehouseMultiEnv(MultiAgentEnv):
         infos = []
 
         for agent in self._agent_ids:
-        
+
             rewards.append([self.game.reward_history[agent][-1]])
             dones.append( self.game.step_data[agent]['terminated'])
             infos.append( self.game.step_data[agent]['infos'])
 
 
                 #reset the game and start new if game is terminated
+
         if self.game.done:
             
             self.reset()
 
+        # add for randomizing
+        local_obs = np.array(self.get_obs())[self.agent_permutation]
+        global_state = np.array( self.get_state())[self.agent_permutation]
+        rewards = np.array(rewards)[self.agent_permutation]
+        dones = np.array(dones)[self.agent_permutation]
+        infos = np.array(infos)[self.agent_permutation]
+        available_actions = np.array(self.get_avail_actions())[self.agent_permutation]
+
          
-    
-            # observations[agent] = obs[agent]
-            # rewards[agent] = self.game.reward_history[agent][-1]
-            # terminateds[agent] = self.game.step_data[agent]['terminated'] 
-
-            # truncateds[agent] =  self.game.step_data[agent]["infos"]["steps_exceeded"] == -1 #equals to -1 means step exceeded so episode is truncated
-            # infos[agent] = self.game.step_data[agent]['infos']
-            # truncateds["__all__"] = truncateds[agent] 
-            # for debugging
-        #     # print("agent {} action mask: {}".format(agent, observations[agent]["action_mask"]))
-        
-        # # return reward_n, done_n, info
-        # rewards = [[reward_n]] * self.n_agents
-        # dones = [done_n] * self.n_agents
-        # infos = [info for _ in range(self.n_agents)]
-        # # print("obs: ", self.get_obs())
-        # # print("state: ", self.get_state())
-
-      
-
-
-        # if self.game.step_data[agent]['terminated']:
-        #     self.game.reset(deterministic_game= self.deterministic_game, goal_area=self.goal_area)
 
 
 
-        return self.get_obs(), self.get_state(), rewards, dones, infos, self.get_avail_actions()
+        return local_obs, global_state, rewards, dones, infos, available_actions
 
+    # add for randomizing
+    def permutate_idx(self):
+        self.agent_permutation = np.random.permutation(self.n_agents)
+        self.agent_recovery = [np.where(self.agent_permutation == i)[0][0] for i in range(self.n_agents)]
+        self.agent_recovery = np.array(self.agent_recovery)
 
 
 
@@ -272,13 +266,25 @@ class WarehouseMultiEnv(MultiAgentEnv):
         self.timestep = 0
         infos = {}
         obs_env = {}
+
+        # add for randomizing
+        self.permutate_idx()
+
+
         if self.deterministic_game == True:
             self.game.reset(deterministic_game=True, seed = self.seed , goal_area=self.goal_area)
         else:
             self.game.reset(deterministic_game=False, seed= self.seed , goal_area=self.goal_area)
 
-        return self.get_obs(), self.get_state(), self.get_avail_actions()
 
+       # add for randomizing
+        local_obs = np.array(self.get_obs())[self.agent_permutation]
+        global_state = np.array( self.get_state())[self.agent_permutation]
+        available_actions = np.array(self.get_avail_actions())[self.agent_permutation]
+
+        
+
+        return local_obs, global_state, available_actions
 
     def save_image(self):
         img =self.render(mode="rgb_array", image_observation= True)
@@ -333,6 +339,7 @@ class WarehouseMultiEnv(MultiAgentEnv):
                 obs_i = (obs_i - np.mean(obs_i)) / np.std(obs_i)
             else:
                 obs_i = self.get_obs_agent(a)
+
             obs_n.append(obs_i)
    
         return obs_n
@@ -347,10 +354,13 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
         agent_loc = self.game.agent_dict[agent_id].loc
 
-        agent_encode = ItemKind_onehot.encoding[self.game.agent_dict[agent_id].kind]
+        agent_encode = [ItemKind_encode.encoding[self.game.agent_dict[agent_id].kind]]
+
+
+       
 
         
-        return np.concatenate([agent_loc, agent_encode, grid_world], axis = 0)
+        return np.concatenate([agent_loc, np.array(agent_encode), grid_world], axis = 0)
 
 
             # return build_obs(self.env,

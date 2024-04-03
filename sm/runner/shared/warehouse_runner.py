@@ -76,7 +76,7 @@ class WarehouseRunner(Runner):
             success_rate = np.mean(np.array(game_success))
 
              
-            print(" train game success rate is {}.".format(success_rate))
+            #print(" train game success rate is {}.".format(success_rate))
 
             # compute return and update network
             self.compute()
@@ -135,6 +135,7 @@ class WarehouseRunner(Runner):
     def warmup(self):
         # reset env
         obs, share_obs, available_actions = self.envs.reset()
+
 
        
 

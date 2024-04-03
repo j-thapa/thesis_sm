@@ -122,7 +122,7 @@ def parse_args(args, parser):
     parser.add_argument("--obs_stacking", action='store_true', default=False)
     parser.add_argument("--num_objects", type = int, default=1)
     parser.add_argument("--pair_agents", type = int, default=2)
-    parser.add_argument("--max_steps", type = int, default=200)
+    parser.add_argument("--max_steps", type = int, default=100)
     parser.add_argument("--stacked_layers", type = int, default=3)
     parser.add_argument("--obstacle", action='store_true', default=False)
     parser.add_argument("--goal_area", action='store_true', default= False)
