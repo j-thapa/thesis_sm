@@ -283,6 +283,13 @@ class WarehouseGame (games.GameBase_multiagent):
         for agent in self.agent_ids:
 
             agent_obj = self.agent_dict[agent]
+
+            if agent_obj.attached:
+                if agent_obj.picked_object.attachable != True:
+                    # add small reward as one step of attaching is achieved
+                    step_data.add_reward(0.005, agent)
+                    print("adding small reward for correct attachment and holding to it")
+
   
 
             step_data[agent]["reward"] = float(0.)
@@ -446,6 +453,8 @@ class WarehouseGame (games.GameBase_multiagent):
 
         # Check game end
 
+        
+
         if self._check_pick_success():
             
             for agent in self.agent_ids:
@@ -464,6 +473,8 @@ class WarehouseGame (games.GameBase_multiagent):
                 step_data[agent]["infos"]["steps_exceeded"] = -float(1.0)
                 step_data[agent]['terminated'] = True
             step_data.terminate_game({"goal_reached": False})
+
+
             
         return step_data
 

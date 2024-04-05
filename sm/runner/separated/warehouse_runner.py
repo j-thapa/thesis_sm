@@ -34,6 +34,7 @@ class WarehouseRunner(Runner):
 
             #total_games = np.zeros(self.n_rollout_threads, dtype=np.float32)
             game_success = []
+            reward_hist = []
 
             for step in range(self.episode_length):
             #no fix episode length, episode ends and resets in this length; not concrete episode length
@@ -50,6 +51,14 @@ class WarehouseRunner(Runner):
                         #print("environment done  of ",t,"at step", step, infos[t][0]['game_success'])\
 
                         game_success.append(infos[t][0]['game_success'])
+                        
+                        if np.mean(infos[t][0]['reward_till']) > -0.0098:
+                            # print("lets see reward now thaT env is done-----------------")
+                            # print(len(infos[t][0]['reward_till']), np.mean(infos[t][0]['reward_till']))
+                            # print("+++++++++++++++++++++++++++++++++")
+                    
+                            print(infos[t][0]['reward_till'])
+                        reward_hist.append(np.mean(infos[t][0]['reward_till']))
 
 
                 #print(len(game_success), "step is", step)
@@ -71,9 +80,11 @@ class WarehouseRunner(Runner):
                 self.insert(data)
 
             success_rate = np.mean(np.array(game_success))
+            reward_rate =  np.mean(np.array(reward_hist))
 
              
-            #print(" train game success rate is {}.".format(success_rate))
+            # print(" train game success rate is {}.".format(success_rate))
+            # print(" reward rate is {}.".format(reward_rate))
 
             # compute return and update network
             self.compute()
@@ -98,6 +109,7 @@ class WarehouseRunner(Runner):
                                 total_num_steps,
                                 self.num_env_steps,
                                 int(total_num_steps / (end - start))))
+                print(" reward rate is {}.".format(reward_rate))
 
                 # games_success = []
                 # terminated = []
@@ -117,6 +129,7 @@ class WarehouseRunner(Runner):
                 #     wandb.log({"incre_win_rate": incre_win_rate}, step=total_num_steps)
                 # else:
                 self.writter.add_scalars("train_success_rate", {"rain_success_rate": success_rate}, total_num_steps)
+                self.writter.add_scalars("Reward_per_episode", {"reward_per_episode": reward_rate}, total_num_steps)
 
                 # last_terminated = terminated
                 # last_games_success = games_success

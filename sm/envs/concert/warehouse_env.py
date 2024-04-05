@@ -167,7 +167,21 @@ class WarehouseMultiEnv(MultiAgentEnv):
     
             #observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1] * ItemKind_onehot.num_itemkind + 2 + ItemKind_onehot.num_itemkind,),low=-np.inf, high=np.inf, dtype=np.float32)
             #for not one hot encoding
-            observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1]  + 2 + 1,),low=-np.inf, high=np.inf, dtype=np.float32)
+            if self.image_observation:
+                observation_space = spaces.Box(
+                    low=0,
+                    high=255,
+                    shape=(
+                        shape[0]*4,
+                        shape[1]*4,
+                        3,
+                    ),
+                    dtype="uint8",
+                )
+
+            else:
+
+                observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1]  + 2 + 1,),low=-np.inf, high=np.inf, dtype=np.float32)
 
 
         self.observation_space= [observation_space for _ in range(self.n_agents)]
@@ -226,9 +240,14 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
         for agent in self._agent_ids:
 
+            
+
             rewards.append([self.game.reward_history[agent][-1]])
             dones.append( self.game.step_data[agent]['terminated'])
+            
+            self.game.step_data[agent]['infos']['reward_till'] = (self.game.reward_history[agent])
             infos.append( self.game.step_data[agent]['infos'])
+      
 
 
                 #reset the game and start new if game is terminated
@@ -423,21 +442,77 @@ class WarehouseMultiEnv(MultiAgentEnv):
         generates the action mask, corresponding to the current status of param agent_obj;
         """
         if agent_obj.attached:
-            # object already attached => no pick action available
-            if len(agent_obj._reachable_goals(agent_obj.picked_object)) > 0:
-                # a goal is reachable, allow drop action
-                action_mask = [1., 1., 1., 1., 1., 1.]  # [left, right, up, down, pick/drop, do_nothing]
-            else:
-                # no goal is reachable, mask out drop action
-                action_mask = [1., 1., 1., 1., 0., 1.]
+            # # object already attached => no pick action available
+            # if len(agent_obj._reachable_goals(agent_obj.picked_object)) > 0:
+            #     # a goal is reachable, allow drop action
+            #     action_mask = [1., 1., 1., 1., 1., 1.]  # [left, right, up, down, pick/drop, do_nothing]
+            # else:
+            #     # no goal is reachable, mask out drop action
+            #     action_mask = [1., 1., 1., 1., 0., 1.]
     
             if agent_obj.picked_object.attachable:
                 #mask out everything except drop and do nothing if the agent is attached but object still need more agents 
-                action_mask = [0., 0., 0., 0., 1., 1.]
+                return ([0., 0., 0., 0., 1., 1.])
             
             if agent_obj.picked_object.attachable != True and agent_obj.kind == ItemKind.AGENT_ATTACHED:
                 #mask out everything except do_nothing if the robot agent is attached and object is attached by both robot and heuristic agents
-                action_mask = [0., 0., 0., 0., 0., 1.] 
+                return ([0., 0., 0., 0., 0., 1.])
+
+            #now if object is composite; have to take care of both driven agent and objects
+    
+            if not agent_obj.picked_object.attachable and agent_obj.kind == ItemKind.H_AGENT_ATTACHED: #composite object
+                picked_obj = agent_obj.picked_object
+                driven_agent = [x for x in picked_obj.carriers if x != agent_obj][0]
+
+                #no impassable moves for picked_object
+
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("left", agent_obj.picked_object)
+                if adjacent_to_impassable and (impassable_item != agent_obj or impassable_item != driven_agent):
+                    action_mask[0] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("right", agent_obj.picked_object)
+                if adjacent_to_impassable and (impassable_item != agent_obj or impassable_item != driven_agent):
+                    action_mask[1] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("up", agent_obj.picked_object)
+                if adjacent_to_impassable and (impassable_item != agent_obj or impassable_item != driven_agent):
+                    action_mask[2] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("down", agent_obj.picked_object)
+                if adjacent_to_impassable and (impassable_item != agent_obj or impassable_item != driven_agent):
+                    action_mask[3] = 0.
+
+
+                #no impassable moves for driven agent
+
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("left", driven_agent)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[0] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("right", driven_agent)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[1] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("up", driven_agent)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[2] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("down", driven_agent)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[3] = 0.
+
+                
+                #no impassable moves for driving agent
+
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("left", agent_obj)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[0] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("right", agent_obj)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[1] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("up", agent_obj)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[2] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("down", agent_obj)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[3] = 0.
+
+
+
 
                 
         else:
@@ -447,7 +522,29 @@ class WarehouseMultiEnv(MultiAgentEnv):
                 action_mask = [1., 1., 1., 1., 1., 1.]
             else:
                 # no object reachable, mask out pick action
-                action_mask = [1., 1., 1., 1., 1, 1.]
+                action_mask = [1., 1., 1., 1., 0, 1.]
+
+        
+
+        #no impassable moves for driven agent
+
+        adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("left",agent_obj)
+        if adjacent_to_impassable:
+            action_mask[0] = 0.
+        adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("right",agent_obj)
+        if adjacent_to_impassable:
+            action_mask[1] = 0.
+        adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("up",agent_obj)
+        if adjacent_to_impassable:
+            action_mask[2] = 0.
+        adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("down",agent_obj)
+        if adjacent_to_impassable:
+            action_mask[3] = 0.
+
+
+
+
+    
         return action_mask
 
     def get_total_actions(self):
