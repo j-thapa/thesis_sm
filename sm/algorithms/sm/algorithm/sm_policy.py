@@ -90,6 +90,11 @@ class SMPolicy:
         print(f'Non-trainable params: {NonTrainable_params}')
         # time.sleep(9)
 
+        # print("loading policy")
+        # model_dir = "/system/user/studentwork/thapa/rware/sm/scripts/results/WarehouseEnv/mat/run19/models/seq_model_3124.pt"
+        # self.restore(model_dir)
+
+
         self.optimizer = torch.optim.Adam(self.seq_model.parameters(),
                                           lr=self.lr, eps=self.opti_eps,
                                           weight_decay=self.weight_decay)

@@ -123,11 +123,16 @@ def render(engine, order: List[ItemKind] = None, image_observation:bool=True) ->
         img = art.finalize_image(img)
         state = img
     else:
-        #state = np.zeros(shape=(H,W,ItemKind_onehot.num_itemkind), dtype='int32')
-        state = np.zeros(shape=(H,W,1), dtype='int32')
+        state = np.zeros(shape=(H,W,ItemKind_onehot.num_itemkind), dtype='int32')
+
+
+        # state = np.zeros(shape=(H,W,1), dtype='int32')
         for it in engine.items(order=order):
 
-            state[it.loc[0]][it.loc[1]] = ItemKind_encode.encoding[it.kind]
+            # state[it.loc[0]][it.loc[1]] = ItemKind_encode.encoding[it.kind]
+
+            #one hot encoding
+            state[it.loc[0]][it.loc[1]] = ItemKind_onehot.encoding[it.kind]
             
 
 

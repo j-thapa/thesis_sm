@@ -94,7 +94,7 @@ class WarehouseRunner(Runner):
             # post process
             total_num_steps = (episode + 1) * self.episode_length * self.n_rollout_threads          
             # save model
-            if (episode % self.save_interval == 0 or episode == policy_updates - 1):
+            if (total_num_steps % self.save_interval == 0 or episode == policy_updates - 1):
                 self.save(episode)
 
             # log information
@@ -110,6 +110,7 @@ class WarehouseRunner(Runner):
                                 int(total_num_steps / (end - start))))
 
                 print(" reward rate is {}.".format(reward_rate))
+                print(" Success rate is {}.".format(success_rate))
 
                 # games_success = []
                 # terminated = []
@@ -129,6 +130,8 @@ class WarehouseRunner(Runner):
                     wandb.log({"incre_win_rate": incre_win_rate}, step=total_num_steps)
                 else:
                     self.writter.add_scalars("train_success_rate", {"train_success_rate": success_rate}, total_num_steps)
+                    self.writter.add_scalars("eps_reward_rate", {"train_reward_rate": reward_rate}, total_num_steps)
+                  
 
                 # last_terminated = terminated
                 # last_games_success = games_success

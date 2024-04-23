@@ -112,11 +112,9 @@ def parse_args(args, parser):
         #     },
 
         
-    parser.add_argument('--reward_game_success', type=float, default=1.0)
-    parser.add_argument('--reward_each_action', type=float, default=-0.01)
-    parser.add_argument('--reward_illegal_action', type=float, default=-0.07)
-    parser.add_argument("--dynamic_obstacle_randomness", type = float, default=0)
-    parser.add_argument("--heuristic_agent_randomness", type = float, default=0.3)
+    # parser.add_argument('--reward_game_success', type=float, default=1.0)
+    # parser.add_argument('--reward_each_action', type=float, default=-0.01)
+    # parser.add_argument('--reward_illegal_action', type=float, default=-0.07)
     #works as available actions
     parser.add_argument("--action_masking", action='store_true', default=True)
     parser.add_argument("--image_observation", action='store_true', default=False)

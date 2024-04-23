@@ -17,7 +17,6 @@ class WarehouseGame (games.GameBase_multiagent):
     """
     def __init__(
         self,
-        env_config,
         agent_ids: List[str] = ['agent_1'],
         shape=(10, 10),
         max_steps: int = 100,
@@ -46,9 +45,11 @@ class WarehouseGame (games.GameBase_multiagent):
 
      
         # configuration of reward scheme parameters
-        self.reward_game_success = handle_not_element(env_config, "reward_game_success", 1.0)
-        self.reward_each_action = handle_not_element(env_config, "reward_each_action", -0.01)
-        self.reward_illegal_action = handle_not_element(env_config, "reward_illegal_action", -0.1)
+        self.reward_game_success =  1.0
+        self.reward_drop_success =  1.25
+        self.reward_pick_success =  0.75
+        self.reward_each_action = -0.01
+        self.reward_illegal_action = -0.07
 
 
 
@@ -287,8 +288,9 @@ class WarehouseGame (games.GameBase_multiagent):
             if agent_obj.attached:
                 if agent_obj.picked_object.attachable != True:
                     # add small reward as one step of attaching is achieved
-                    step_data.add_reward(0.005, agent)
-                    print("adding small reward for correct attachment and holding to it")
+                    # step_data.add_reward(0.005, agent)
+                    # print("adding small reward for correct attachment and holding to it")
+                    pass
 
   
 
@@ -370,11 +372,11 @@ class WarehouseGame (games.GameBase_multiagent):
                     
                         # if 'heuristic_agent' not in agent:
                         if agent_obj.picked_object.attachable != True:
-                            print(" ------ agents have succcessful attachment of the object -----")
+                            # print(" ------ agents have succcessful attachment of the object -----")
                             carriers = [self.get_key_from_value(self.agent_dict, carrier) for carrier in agent_obj.picked_object.carriers]
                             
                             for carrier in carriers:
-                                step_data.add_reward(0.2, carrier) #adding sucessful pick reward for bot agents
+                                step_data.add_reward(self.reward_pick_success, carrier) #adding sucessful pick reward for bot agents
 
                             
 
@@ -432,11 +434,11 @@ class WarehouseGame (games.GameBase_multiagent):
                         step_data[agent]["infos"]["drop_failure"] = float(1.0)
                         goal_locs = [g.loc for g in self.goals]
                         if 'heuristic' in agent and object_picked.dropped and any(np.array_equal(object_picked.loc, j) for j in goal_locs) :
-                            print("----heuristic agent has driven and drop the composite object correctly----")
+                            # print("----heuristic agent has driven and drop the composite object correctly----")
 
                             for carrier in carriers_:
 
-                                step_data.add_reward(0.4, carrier) # i.e heuristic agent has driven and drop the composite object correctly, add reward for both agents
+                                step_data.add_reward(self.reward_drop_success, carrier) # i.e heuristic agent has driven and drop the composite object correctly, add reward for both agents
 
 
                     else:
@@ -455,11 +457,11 @@ class WarehouseGame (games.GameBase_multiagent):
 
         
 
-        if self._check_pick_success():
+        if self._check_game_success():
             
             for agent in self.agent_ids:
 
-                step_data.add_reward(self.reward_game_success, agent) # game success reward for agent getting attached
+                # step_data.add_reward(self.reward_game_success, agent) # game success reward for agent getting attached
               
                 step_data[agent]["infos"]["game_success"] = float(1.0)
 
@@ -488,8 +490,8 @@ class WarehouseGame (games.GameBase_multiagent):
         dropped_objs = [i for i in self.objects if i.dropped and any(np.array_equal(i.loc, j) for j in goal_locs)]
 
 
-        if len(dropped_objs) == self.num_objects:
-           print("++++++++++++++++++++++++++++++++++++++++++++++++++ ALL OBJECTS ON GOALS +++++++++++++++++++++++++++++++++++++++++++++++++")
+        # if len(dropped_objs) == self.num_objects:
+        #    print("++++++++++++++++++++++++++++++++++++++++++++++++++ ALL OBJECTS ON GOALS +++++++++++++++++++++++++++++++++++++++++++++++++")
 
         return len(dropped_objs) == self.num_objects
 
@@ -501,8 +503,8 @@ class WarehouseGame (games.GameBase_multiagent):
         picked_objs = [i for i in self.objects if i.attachable != True]
 
 
-        if len(picked_objs) == self.num_objects:
-           print("++++++++++++++++++++++++++++++++++++++++++++++++++ ALL OBJECTS picked +++++++++++++++++++++++++++++++++++++++++++++++++")
+        # if len(picked_objs) == self.num_objects:
+        #    print("++++++++++++++++++++++++++++++++++++++++++++++++++ ALL OBJECTS picked +++++++++++++++++++++++++++++++++++++++++++++++++")
 
         return len(picked_objs) == self.num_objects
 

@@ -69,7 +69,7 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
         
         
-        self.heuristic_randomness =kwargs['all_args'].heuristic_agent_randomness
+       
     
     # encoding = {}
     # WALL = 1
@@ -104,20 +104,20 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
 
 
-        self.goal_area =kwargs['all_args'].goal_area
+       
 
-        env_config = {
-            "reward_game_success": kwargs["all_args"].reward_game_success, # default: 1.0
-            "reward_each_action": kwargs["all_args"].reward_each_action, # default: -0.01
-            "reward_illegal_action": kwargs["all_args"].reward_illegal_action, # default: -0.05
-            "seed": self.seed
-            }
-
-
+        # env_config = {
+        #     "reward_game_success": kwargs["all_args"].reward_game_success, # default: 1.0
+        #     "reward_each_action": kwargs["all_args"].reward_each_action, # default: -0.01
+        #     "reward_illegal_action": kwargs["all_args"].reward_illegal_action, # default: -0.05
+        #     "seed": self.seed
+        #     }
 
 
 
-        self.game = WarehouseGame(env_config,
+
+
+        self.game = WarehouseGame(
             agent_ids=self._agent_ids,
             shape=self.shape,
             max_steps=self.max_steps,
@@ -181,7 +181,11 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
             else:
 
-                observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1]  + 2 + 1,),low=-np.inf, high=np.inf, dtype=np.float32)
+                # one hot encoded observation
+                observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1] * ItemKind_onehot.num_itemkind + 2 + 8 
+                 + ItemKind_onehot.num_itemkind,),low=-np.inf, high=np.inf, dtype=np.float32)
+
+                # observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1]  + 2 + 1,),low=-np.inf, high=np.inf, dtype=np.float32)
 
 
         self.observation_space= [observation_space for _ in range(self.n_agents)]
@@ -227,6 +231,8 @@ class WarehouseMultiEnv(MultiAgentEnv):
                     
     
         self.game.step(action_dict_game)
+        # print("generate image")
+        # g = input()
         # self.save_image()
         
         terminateds["__all__"] = self.game.done
@@ -291,9 +297,9 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
 
         if self.deterministic_game == True:
-            self.game.reset(deterministic_game=True, seed = self.seed , goal_area=self.goal_area)
+            self.game.reset(deterministic_game=True, seed = self.seed , goal_area=True)
         else:
-            self.game.reset(deterministic_game=False, seed= self.seed , goal_area=self.goal_area)
+            self.game.reset(deterministic_game=False, seed= self.seed)
 
 
        # add for randomizing
@@ -376,13 +382,18 @@ class WarehouseMultiEnv(MultiAgentEnv):
         if self.image_observation:
             return grid_world
 
-        agent_encode = [ItemKind_encode.encoding[self.game.agent_dict[agent_id].kind]]
-
-
-       
+           
 
         
-        return np.concatenate([agent_loc, np.array(agent_encode), grid_world], axis = 0)
+
+        # agent_encode = [ItemKind_encode.encoding[self.game.agent_dict[agent_id].kind]]
+
+        agent_encode = ItemKind_onehot.encoding[self.game.agent_dict[agent_id].kind]
+
+        goal_loc = np.array([x.loc for x in self.game.goals])
+
+
+        return np.concatenate([agent_loc, goal_loc.flatten(), np.array(agent_encode), grid_world], axis = 0)
 
 
             # return build_obs(self.env,
@@ -440,7 +451,10 @@ class WarehouseMultiEnv(MultiAgentEnv):
     def gen_action_mask(self, agent_obj):
         """
         generates the action mask, corresponding to the current status of param agent_obj;
+
         """
+        action_mask = [1., 1., 1., 1., 1., 1.]
+
         if agent_obj.attached:
             # # object already attached => no pick action available
             # if len(agent_obj._reachable_goals(agent_obj.picked_object)) > 0:
@@ -449,34 +463,49 @@ class WarehouseMultiEnv(MultiAgentEnv):
             # else:
             #     # no goal is reachable, mask out drop action
             #     action_mask = [1., 1., 1., 1., 0., 1.]
+
+            
+
+            
     
             if agent_obj.picked_object.attachable:
                 #mask out everything except drop and do nothing if the agent is attached but object still need more agents 
                 return ([0., 0., 0., 0., 1., 1.])
             
-            if agent_obj.picked_object.attachable != True and agent_obj.kind == ItemKind.AGENT_ATTACHED:
+            elif agent_obj.kind == ItemKind.AGENT_ATTACHED:
                 #mask out everything except do_nothing if the robot agent is attached and object is attached by both robot and heuristic agents
                 return ([0., 0., 0., 0., 0., 1.])
 
             #now if object is composite; have to take care of both driven agent and objects
     
-            if not agent_obj.picked_object.attachable and agent_obj.kind == ItemKind.H_AGENT_ATTACHED: #composite object
+            elif agent_obj.kind == ItemKind.H_AGENT_ATTACHED: #composite object
+            
                 picked_obj = agent_obj.picked_object
                 driven_agent = [x for x in picked_obj.carriers if x != agent_obj][0]
 
+                goals_loc = [x.loc for x in self.game.goals]
+
+        
+
+                if any(np.array_equal(np.array(picked_obj.loc), arr) for arr in goals_loc):
+                    action_mask[4] = 1.0 
+                else:
+                    action_mask[4] = 0.0 #mask out drop option if the object is not in goal grid cel
+
+
                 #no impassable moves for picked_object
 
-                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("left", agent_obj.picked_object)
-                if adjacent_to_impassable and (impassable_item != agent_obj or impassable_item != driven_agent):
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("left", picked_obj)
+                if adjacent_to_impassable and (impassable_item != agent_obj and impassable_item != driven_agent):
                     action_mask[0] = 0.
-                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("right", agent_obj.picked_object)
-                if adjacent_to_impassable and (impassable_item != agent_obj or impassable_item != driven_agent):
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("right", picked_obj)
+                if adjacent_to_impassable and (impassable_item != agent_obj and impassable_item != driven_agent):
                     action_mask[1] = 0.
-                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("up", agent_obj.picked_object)
-                if adjacent_to_impassable and (impassable_item != agent_obj or impassable_item != driven_agent):
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("up", picked_obj)
+                if adjacent_to_impassable and (impassable_item != agent_obj and impassable_item != driven_agent):
                     action_mask[2] = 0.
-                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("down", agent_obj.picked_object)
-                if adjacent_to_impassable and (impassable_item != agent_obj or impassable_item != driven_agent):
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("down", picked_obj)
+                if adjacent_to_impassable and (impassable_item != agent_obj and impassable_item != driven_agent):
                     action_mask[3] = 0.
 
 
@@ -510,6 +539,12 @@ class WarehouseMultiEnv(MultiAgentEnv):
                 adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("down", agent_obj)
                 if adjacent_to_impassable and (impassable_item != picked_obj):
                     action_mask[3] = 0.
+
+            # print(agent_obj.kind, picked_obj.attachable,picked_obj.carriers )
+            # print("composite objecr heuristic agent selecting move", action_mask)
+            # print("-------------------------")
+
+            return action_mask
 
 
 
