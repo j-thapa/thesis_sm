@@ -402,7 +402,7 @@ class RWKV(nn.Module):
         from torch.utils.cpp_extension import load
         T_MAX = 45
         RWKV_FLOAT_MODE = dtype
-        cuda_dir = "...algorithm/cuda"
+        cuda_dir = "/system/user/studentwork/thapa/rware/sm/algorithms/sm/algorithm/cuda"
 
         print("load from directory")
     

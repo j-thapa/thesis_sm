@@ -130,11 +130,12 @@ def parse_args(args, parser):
     parser.add_argument("--mode", type = str, default='training')
     parser.add_argument("--random_agent_order", action='store_true', default=False)
     parser.add_argument("--three_grid_object", action='store_true', default=False)
-    parser.add_argument("--grid_shape", default=(10,10))
+    parser.add_argument("--grid_shape", default=(15,15))
     parser.add_argument("--heuristic_agent", action='store_true', default= True)
     parser.add_argument("--random_agent", action='store_true', default= False)
     parser.add_argument("--goals_coord", default=  [(8,2),(5,2),(7,4),(2,5),(3,8)])
     parser.add_argument("--use_single_network", action='store_true', default=False)
+    parser.add_argument("--partial_observation", action='store_true', default=True)
 
 
     #aadd here params

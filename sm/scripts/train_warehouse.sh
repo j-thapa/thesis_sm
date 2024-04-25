@@ -3,14 +3,15 @@ env="WarehouseEnv"
 algo="mat"
 seed=1
 
+#0,0007 eps length 100
 
 echo "env is ${env}, algo is ${algo}, seed is ${seed}"
 CUDA_VISIBLE_DEVICES=0 python train/train_warehouse.py --env_name ${env} \
   --n_block 1 --algorithm_name ${algo} --seed ${seed} \
-  --n_training_threads 16 --n_rollout_threads 18 \
-  --num_mini_batch 40 --episode_length 100 --num_env_steps 10000000 \
-  --lr 0.0007 --ppo_epoch 15 --clip_param 0.05 \
-  --pair_agents 1 --save_interval 2000000 --num_objects 1 --max_steps 50 \
+  --n_training_threads 1 --n_rollout_threads 1 \
+  --num_mini_batch 40 --episode_length 120 --num_env_steps 10000000 \
+  --lr 0.001 --ppo_epoch 15 --clip_param 0.05 \
+  --pair_agents 2 --save_interval 2000000 --num_objects 3 --max_steps 70 \
    --use_eval 
 
 

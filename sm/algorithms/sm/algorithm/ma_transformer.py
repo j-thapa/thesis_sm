@@ -123,10 +123,13 @@ class Encoder(nn.Module):
         self.state_encoder = nn.Sequential(nn.LayerNorm(state_dim),
                                            init_(nn.Linear(state_dim, n_embd), activate=True), nn.GELU())
 
+        self.obs_encoder = nn.Sequential(nn.LayerNorm(obs_dim),
+                                           init_(nn.Linear(obs_dim, n_embd), activate=True), nn.GELU())
+
    
-        self.obs_encoder = nn.Sequential(nn.LayerNorm(obs_dim), 
-                                        init_(nn.Linear(obs_dim, 512 ), activate=True), nn.GELU(),
-                                        init_(nn.Linear(512, n_embd), activate=True), nn.GELU())
+        # self.obs_encoder = nn.Sequential(nn.LayerNorm(obs_dim), 
+        #                                 init_(nn.Linear(obs_dim, 512 ), activate=True), nn.GELU(),
+        #                                 init_(nn.Linear(512, n_embd), activate=True), nn.GELU())
 
         self.ln = nn.LayerNorm(n_embd)
         self.blocks = nn.Sequential(*[EncodeBlock(n_embd, n_head, n_agent) for _ in range(n_block)])

@@ -91,7 +91,7 @@ class SMPolicy:
         # time.sleep(9)
 
         # print("loading policy")
-        # model_dir = "/system/user/studentwork/thapa/rware/sm/scripts/results/WarehouseEnv/mat/run19/models/seq_model_3124.pt"
+        # model_dir = "/system/user/studentwork/thapa/rware/sm/scripts/results/WarehouseEnv/mat/run53/models/seq_model_5554.pt"
         # self.restore(model_dir)
 
 

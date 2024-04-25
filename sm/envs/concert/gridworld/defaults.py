@@ -98,7 +98,7 @@ DEFAULT_ORDER = [ItemKind.WALL,   ItemKind.GOAL, ItemKind.OBJECT,  ItemKind.AGEN
 
 
 
-def render(engine, order: List[ItemKind] = None, image_observation:bool=True) -> np.ndarray:
+def render(engine, order: List[ItemKind] = None, image_observation:bool=True, partial_observation = False, loc = None) -> np.ndarray:
     """
     returns the current state of the world being represented by param "engine"; the state may be returned as an image
     (if param "image_observation" is True) or as a (flattened) 3-dim array, with one-hot encoded items on grid locations;
@@ -107,6 +107,30 @@ def render(engine, order: List[ItemKind] = None, image_observation:bool=True) ->
     state = None # return value; the actual engine state
     if order is None:
         order = DEFAULT_ORDER
+
+    if partial_observation:
+
+        #only 3x3 observation with loc being center is the state
+
+        partial_state = []
+        center_x, center_y = loc
+        partial_coordinates = [(x, y) for x in range(center_x - 1, center_x + 2)
+                     for y in range(center_y - 1, center_y + 2)]
+        state = np.zeros(shape=(H,W,1), dtype='int32')
+        for it in engine.items(order=order):
+
+            state[it.loc[0]][it.loc[1]] = ItemKind_encode.encoding[it.kind]
+        
+      
+
+        partial_state =  np.array([ItemKind_onehot.encode_one_hot[int(state[x[0]][x[1]])] for x in partial_coordinates])
+
+
+
+        return partial_state.flatten()
+
+
+
 
    
 
@@ -133,6 +157,8 @@ def render(engine, order: List[ItemKind] = None, image_observation:bool=True) ->
 
             #one hot encoding
             state[it.loc[0]][it.loc[1]] = ItemKind_onehot.encoding[it.kind]
+
+        
             
 
 

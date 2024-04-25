@@ -57,6 +57,7 @@ class ItemKind_onehot():
     one hot encoding of ItemKind, used for vector observations
     """
     encoding = {}
+    encode_one_hot = {}
     num_itemkind = 8 # the number of distinct item kinds
 
     wall = np.zeros(shape=(num_itemkind), dtype='int32')
@@ -85,6 +86,25 @@ class ItemKind_onehot():
     encoding[ItemKind.OBJECT_ATTACHED] = object_attached
     encoding[ItemKind.AGENT_ATTACHED] = agent_attached
     encoding[ItemKind.H_AGENT_ATTACHED] = h_agent_attached
+
+    e_WALL = 1
+    e_OBJECT = 2
+    e_GOAL = 4
+    e_AGENT = 8   
+    e_OBJECT_ATTACHED = 14
+    e_AGENT_ATTACHED = 18
+    e_H_AGENT = 9
+    e_H_AGENT_ATTACHED = 19
+
+    encode_one_hot[0] = np.zeros(shape=(num_itemkind), dtype='int32') #open grid cell
+    encode_one_hot[e_WALL] = wall
+    encode_one_hot[e_OBJECT] = object_
+    encode_one_hot[e_GOAL] = goal
+    encode_one_hot[e_AGENT] = agent
+    encode_one_hot[e_H_AGENT] = h_agent
+    encode_one_hot[e_OBJECT_ATTACHED] = object_attached
+    encode_one_hot[e_AGENT_ATTACHED] = agent_attached
+    encode_one_hot[e_H_AGENT_ATTACHED] = h_agent_attached
 
 
 

@@ -22,7 +22,7 @@ class WarehouseGame (games.GameBase_multiagent):
         max_steps: int = 100,
         num_objects: int = 1,
         obstacle: bool = True,
-        seed = 42
+        seed: int = 42
     ) -> None:
         super().__init__()
         self.shape = shape
@@ -61,14 +61,11 @@ class WarehouseGame (games.GameBase_multiagent):
         self.engine = engine.GridEngine(self.shape, rng=self.rng)
         w = items.WallItem.create_border(self.shape)
         self.engine.add(w)
-        
 
+        # create goal cells for the game
+       
 
-
-            
-        # create goal area for the game
-
-        self.goals, goals_coordinates = self.create_goal_area(size=2)
+        self.goals, goals_coordinates = self.create_goal_cells(num_cells = self.num_objects, grid_shape = self.shape)
            
         #select objects location randomly not overlapping with goal area coordinates
         object_cells = list(itertools.product([x for x in range(1,self.shape[0]-1)], [x for x in range(1,self.shape[1]-1)]))
@@ -226,7 +223,39 @@ class WarehouseGame (games.GameBase_multiagent):
             # add dynamic obstacle as random agent to agent dict
             self.agent_dict["random_agent"] = self.obstacles[0]
 
+    def create_goal_cells(self, num_cells, grid_shape):
+        """
+        Creates adjacent positioned goal cells either horizontal or vertical; 
+        the goal cells are not  on the edges of the gridworld;
+        @num_cells: the num of goal cells equal to number of objects
+        @return: a list of GoalItem objects and goal cells coordinates making up the goal cells
 
+        """
+
+
+        # Randomly choose the orientation: 0 for horizontal, 1 for vertical
+        orientation = random.choice([0, 1])
+        n_rows, n_columns = grid_shape
+        area = []
+        area_coordinates = []
+
+        if orientation == 0:  # Horizontal
+            row = random.randint(0, n_rows  - 2)
+            start_col = random.randint(0, (n_rows - 2) - num_cells)
+            selected_cells = [(row, col) for col in range(start_col, start_col + num_cells)]
+            
+        else:  # Vertical
+            col = random.randint(0, n_columns - 2)
+            start_row = random.randint(0, (n_columns -2) - num_cells)
+            selected_cells = [(row, col) for row in range(start_row, start_row + num_cells)]
+        
+        for (x,y) in selected_cells:
+            area.append(items.GoalItem((x, y)))
+            area_coordinates.append((x,y))
+            
+        
+
+        return area, area_coordinates
    
 
 
@@ -540,8 +569,9 @@ class WarehouseGame (games.GameBase_multiagent):
         else:
             return False
 
-    def render(self, image_observation:bool=True) -> np.ndarray:
-        return defaults.render(self.engine, image_observation=image_observation)
+    def render(self, image_observation:bool=True, partial_observation = False, loc = None) -> np.ndarray:
+        return defaults.render(self.engine, image_observation=image_observation, 
+        partial_observation = partial_observation, loc =loc)
 
     def is_adjacent_to_impassable(self, direction: str, item: ItemBase) -> (bool, ItemBase):
         """

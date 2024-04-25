@@ -56,6 +56,8 @@ class WarehouseMultiEnv(MultiAgentEnv):
         self._agent_ids = []
         self.heuristic_agent  = kwargs['all_args']
 
+        self.partial_observation = kwargs['all_args'].partial_observation
+
 
         # add for randomizing
         self.agent_permutation = None
@@ -181,9 +183,17 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
             else:
 
-                # one hot encoded observation
-                observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1] * ItemKind_onehot.num_itemkind + 2 + 8 
-                 + ItemKind_onehot.num_itemkind,),low=-np.inf, high=np.inf, dtype=np.float32)
+                if self.partial_observation:
+                    # one hot encoded observation
+                    observation_space = spaces.Box(shape=(3 * 3 * ItemKind_onehot.num_itemkind + 2 + self.num_objects * 2 
+                    + ItemKind_onehot.num_itemkind,),low=-np.inf, high=np.inf, dtype=np.float32)
+
+                else:
+                    
+
+                    # one hot encoded observation
+                    observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1] * ItemKind_onehot.num_itemkind + 2 + self.num_objects * 2 
+                    + ItemKind_onehot.num_itemkind,),low=-np.inf, high=np.inf, dtype=np.float32)
 
                 # observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1]  + 2 + 1,),low=-np.inf, high=np.inf, dtype=np.float32)
 
@@ -371,7 +381,10 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
     def get_obs_agent(self, agent_id):
 
-        grid_world = self.render(mode="rgb_array", image_observation=self.image_observation)
+        if self.image_observation:
+            return grid_world
+
+
         if agent_id % 2 == 0:
             agent_id = f"agent_{agent_id}"
         else:
@@ -379,12 +392,10 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
         agent_loc = self.game.agent_dict[agent_id].loc
 
-        if self.image_observation:
-            return grid_world
 
-           
+        grid_world = self.render(mode="rgb_array", image_observation=self.image_observation, 
+        partial_observation= self.partial_observation, loc = agent_loc)
 
-        
 
         # agent_encode = [ItemKind_encode.encoding[self.game.agent_dict[agent_id].kind]]
 
@@ -600,8 +611,10 @@ class WarehouseMultiEnv(MultiAgentEnv):
     #     self.timelimit_env.reset()
      
 
-    def render(self, mode="human", image_observation:bool=True):
-        state = self.game.render(image_observation=image_observation) # state can be an image or a matrix
+    def render(self, mode = "human", image_observation: bool = True, partial_observation: bool = False, loc=None) -> np.ndarray:
+
+        state = self.game.render(image_observation=image_observation, partial_observation = partial_observation,
+        loc = loc) # state can be an image or a matrix
         if mode == "human" and image_observation:
             if self.viewer is None:
                 from gym.envs.classic_control import rendering
