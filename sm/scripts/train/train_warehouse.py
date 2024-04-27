@@ -130,7 +130,7 @@ def parse_args(args, parser):
     parser.add_argument("--mode", type = str, default='training')
     parser.add_argument("--random_agent_order", action='store_true', default=False)
     parser.add_argument("--three_grid_object", action='store_true', default=False)
-    parser.add_argument("--grid_shape", default=(15,15))
+    parser.add_argument("--grid_shape", default=(12,12))
     parser.add_argument("--heuristic_agent", action='store_true', default= True)
     parser.add_argument("--random_agent", action='store_true', default= False)
     parser.add_argument("--goals_coord", default=  [(8,2),(5,2),(7,4),(2,5),(3,8)])
@@ -171,7 +171,7 @@ def main(args):
         torch.set_num_threads(all_args.n_training_threads)
 
     run_dir = Path(os.path.split(os.path.dirname(os.path.abspath(__file__)))[
-                       0] + "/results") / all_args.env_name / all_args.algorithm_name 
+                       0] + "/results") / all_args.env_name / all_args.algorithm_name / f"shape_{all_args.grid_shape[0]}_ag_{all_args.pair_agents}_obj_{all_args.num_objects}"
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 
