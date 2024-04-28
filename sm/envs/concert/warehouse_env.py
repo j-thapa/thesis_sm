@@ -23,8 +23,6 @@ from sm.envs.concert.gridworld.items import ItemKind, ItemBase, ItemKind_onehot,
 import matplotlib.pyplot as plt
 
 
-from sm.envs.concert.gyms.heuristic_agent import HeuristicAgent
-
 from sm.envs.concert.gridworld.examples.warehouse_game import WarehouseGame
 
 

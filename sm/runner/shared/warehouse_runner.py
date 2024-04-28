@@ -270,7 +270,7 @@ class WarehouseRunner(Runner):
                 eval_env_infos = {'eval_average_episode_rewards': eval_episode_rewards}                
                 self.log_env(eval_env_infos, total_num_steps)
                 eval_game_success = eval_games_success/eval_episode
-                print("eval win rate is {}.".format(eval_game_success))
+                print("eval success rate is {}.".format(eval_game_success))
                 if self.use_wandb:
                     wandb.log({"eval_game_success": eval_game_success}, step=total_num_steps)
                 else:
