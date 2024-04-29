@@ -92,7 +92,7 @@ DEFAULT_SPRITES = {
     ),
 }
 
-DEFAULT_ORDER = [ItemKind.WALL,   ItemKind.GOAL, ItemKind.OBJECT,  ItemKind.AGENT, ItemKind.H_AGENT, ItemKind.OBJECT_ATTACHED, ItemKind.AGENT_ATTACHED, ItemKind.H_AGENT_ATTACHED]
+DEFAULT_ORDER = [ItemKind.GOAL, ItemKind.WALL,    ItemKind.OBJECT,  ItemKind.AGENT, ItemKind.H_AGENT, ItemKind.OBJECT_ATTACHED, ItemKind.AGENT_ATTACHED, ItemKind.H_AGENT_ATTACHED]
 
 
 
@@ -116,6 +116,7 @@ def render(engine, order: List[ItemKind] = None, image_observation:bool=True, pa
         center_x, center_y = loc
         partial_coordinates = [(x, y) for x in range(center_x - 1, center_x + 2)
                      for y in range(center_y - 1, center_y + 2)]
+
         state = np.zeros(shape=(H,W,1), dtype='int32')
         for it in engine.items(order=order):
 
