@@ -241,12 +241,12 @@ class WarehouseGame (games.GameBase_multiagent):
 
         if orientation == 0:  # Horizontal
             row = random.randint(2, n_rows  - 2)
-            start_col = random.randint(0, (n_rows - 2) - num_cells)
+            start_col = random.randint(2, (n_rows - 2) - num_cells)
             selected_cells = [(row, col) for col in range(start_col, start_col + num_cells)]
             
         else:  # Vertical
             col = random.randint(2, n_columns - 2)
-            start_row = random.randint(0, (n_columns -2) - num_cells)
+            start_row = random.randint(2, (n_columns -2) - num_cells)
             selected_cells = [(row, col) for row in range(start_row, start_row + num_cells)]
         
         for (x,y) in selected_cells:

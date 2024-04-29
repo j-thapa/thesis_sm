@@ -331,7 +331,7 @@ class PickAgent(MoveAgent):
  
           
                 carrier.picked_object.carriers.remove(carrier)
-                carrier.picked_object.kind = ItemKind.OBJECT
+                carrier.picked_object.kind = ItemKind.WALL
                 carrier.picked_object = None
             
                 

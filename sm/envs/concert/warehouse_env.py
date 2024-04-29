@@ -23,8 +23,6 @@ from sm.envs.concert.gridworld.items import ItemKind, ItemBase, ItemKind_onehot,
 import matplotlib.pyplot as plt
 
 
-from sm.envs.concert.gyms.heuristic_agent import HeuristicAgent
-
 from sm.envs.concert.gridworld.examples.warehouse_game import WarehouseGame
 
 
@@ -185,14 +183,14 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
                 if self.partial_observation:
                     # one hot encoded observation
-                    observation_space = spaces.Box(shape=(3 * 3 * ItemKind_onehot.num_itemkind + 2 + self.num_objects * 2 
+                    observation_space = spaces.Box(shape=(3 * 3 * ItemKind_onehot.num_itemkind + 2 + self.num_objects * 3 
                     + ItemKind_onehot.num_itemkind,),low=-np.inf, high=np.inf, dtype=np.float32)
 
                 else:
                     
 
                     # one hot encoded observation
-                    observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1] * ItemKind_onehot.num_itemkind + 2 + self.num_objects * 2 
+                    observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1] * ItemKind_onehot.num_itemkind + 2 + self.num_objects * 3 
                     + ItemKind_onehot.num_itemkind,),low=-np.inf, high=np.inf, dtype=np.float32)
 
                 # observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1]  + 2 + 1,),low=-np.inf, high=np.inf, dtype=np.float32)
@@ -279,6 +277,7 @@ class WarehouseMultiEnv(MultiAgentEnv):
         dones = np.array(dones)[self.agent_permutation]
         infos = np.array(infos)[self.agent_permutation]
         available_actions = np.array(self.get_avail_actions())[self.agent_permutation]
+    
 
          
 
@@ -403,8 +402,16 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
         goal_loc = np.array([x.loc for x in self.game.goals])
 
+        objects_loc = [tuple(i.loc) for i in self.game.objects if i.kind == ItemKind.WALL]
 
-        return np.concatenate([agent_loc, goal_loc.flatten(), np.array(agent_encode), grid_world], axis = 0)
+ 
+
+        goal_free = np.array([1 if tuple(x.loc) not in objects_loc else 0 for x in self.game.goals])
+
+    
+
+
+        return np.concatenate([agent_loc, goal_loc.flatten(), goal_free, np.array(agent_encode), grid_world], axis = 0)
 
 
             # return build_obs(self.env,
