@@ -166,6 +166,8 @@ class SMACRunner(Runner):
         eval_battles_won = 0
         eval_episode = 0
 
+        
+
         eval_episode_rewards = []
         one_episode_rewards = []
 
@@ -173,7 +175,8 @@ class SMACRunner(Runner):
 
         eval_rnn_states = np.zeros((self.n_eval_rollout_threads, self.num_agents, self.recurrent_N, self.hidden_size), dtype=np.float32)
         eval_masks = np.ones((self.n_eval_rollout_threads, self.num_agents, 1), dtype=np.float32)
-
+        # start_time =  time.time()
+        # curr = 0
         while True:
 
             self.trainer.prep_rollout()
@@ -189,6 +192,9 @@ class SMACRunner(Runner):
             
             # Obser reward and next obs
             eval_obs, eval_share_obs, eval_rewards, eval_dones, eval_infos, eval_available_actions = self.eval_envs.step(eval_actions)
+            # curr = curr + self.n_eval_rollout_threads
+
+           
             one_episode_rewards.append(eval_rewards)
 
             eval_dones_env = np.all(eval_dones, axis=1)
@@ -197,6 +203,16 @@ class SMACRunner(Runner):
 
             eval_masks = np.ones((self.all_args.n_eval_rollout_threads, self.num_agents, 1), dtype=np.float32)
             eval_masks[eval_dones_env == True] = np.zeros(((eval_dones_env == True).sum(), self.num_agents, 1), dtype=np.float32)
+
+            # if (curr % 6400 == 0 ):
+            #     curr_time = time.time()
+            #     print("steps total now with time", curr, (curr_time - start_time)  )
+
+            # if (curr >= 500000):
+            #     end_time = time.time()
+            #     print("total steps for whole inference and time", curr,(end_time - start_time) )
+
+            #     break
 
             for eval_i in range(self.n_eval_rollout_threads):
                 if eval_dones_env[eval_i]:
@@ -212,7 +228,6 @@ class SMACRunner(Runner):
                 eval_env_infos = {'eval_average_episode_rewards': eval_episode_rewards}                
                 self.log_env(eval_env_infos, total_num_steps)
                 eval_win_rate = eval_battles_won/eval_episode
-                print("eval win rate is {}.".format(eval_win_rate))
                 if self.use_wandb:
                     wandb.log({"eval_win_rate": eval_win_rate}, step=total_num_steps)
                 else:

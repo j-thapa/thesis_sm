@@ -17,31 +17,18 @@ from PIL import Image
 from gym import ObservationWrapper
 
 import sys
-from sm.envs.concert.gridworld.items import ItemKind, ItemBase, ItemKind_onehot
+from .gridworld.items import ItemKind, ItemBase, ItemKind_onehot, ItemKind_encode
 
 
 import matplotlib.pyplot as plt
 
 
-from sm.envs.concert.gyms.heuristic_agent import HeuristicAgent, RandomAgent
-
-from sm.envs.concert.gridworld.examples.warehouse_game import WarehouseGame, WarehouseGame_1, WarehouseGame_2, WarehouseGame_3
+from .gridworld.examples.warehouse_game import WarehouseGame
 
 
 
 
-
-
-
-#different actions are used cause in diferent settings no need to drop; also have to factor action mask
-
-Actions = ["left", "right", "up", "down", "pick", "drop", "do_nothing"]
-Actions_extended = ["left", "right", "up", "down", "pick", "drop", "do_nothing"]
-Actions_reduced = ["left", "right", "up", "down", "pick", "drop", "do_nothing"]
-
-
-
-
+Actions_list = ["left", "right", "up", "down", "pick/drop", "do_nothing"]
 
 
 
@@ -57,13 +44,7 @@ class WarehouseMultiEnv(MultiAgentEnv):
         self.seed =kwargs['all_args'].seed
 
 
-
-
-
-
-        self.three_grid_object =kwargs['all_args'].three_grid_object
-
-        self.n_agents =kwargs['all_args'].num_agents
+        self.n_agents = kwargs['all_args'].num_agents
         self.obstacle =kwargs['all_args'].obstacle
 
         self.num_objects =kwargs['all_args'].num_objects
@@ -71,49 +52,22 @@ class WarehouseMultiEnv(MultiAgentEnv):
         self.shape =kwargs['all_args'].grid_shape
 
         self._agent_ids = []
+        self.heuristic_agent  = kwargs['all_args']
+
+        self.partial_observation = kwargs['all_args'].partial_observation
+
+
+        # add for randomizing
+        self.agent_permutation = None
+        self.agent_recovery = None
+
         for num in range(self.n_agents):
-            self._agent_ids.append(f'agent_{num+1}')
-
-        self.heuristic_agent  =kwargs['all_args'].heuristic_agent
-        self.dynamic =kwargs['all_args'].random_agent
-
-        if self.heuristic_agent == True:
-            self.env_agents.append("heuristic_agent")
-        
-        #if dynamic is true add a random_agent
-        if self.dynamic == True:
-            self.env_agents.append("random_agent")
+            if num % 2 == 0 :
+                self._agent_ids.append(f'agent_{num}') #add robot agent
+            else:
+                self._agent_ids.append(f"heuristic_agent_{num}") #add robot agent pair heuristic agent
 
 
-        #create random agent heuristic algorithm
-        if self.dynamic == False:
-            self.goals_coord = [(2,2)] # dummy coords
-        if self.dynamic == True:
-        
-            #4 goals cooradinates/waypoints for dynamic obstacle/random agent 
-            self.goals_coord =kwargs['all_args'].goals_coord
-
-            #config for randomness in dynamic obstacle
-            self.dynamic_randomness =kwargs['all_args'].dynamic_obstacle_randomness
-
-            print("Dynamic agent randomness set to {}".format(self.dynamic_randomness))
-            
-            self.r_agent =  RandomAgent(shape =[self.shape[0], self.shape[1]], items_number = 9,
-            wall_encoding = 0, agent_encoding = 3, h_agent_encoding = 4, r_agent_encoding = 7, object_encoding = 1, random_factor = self.dynamic_randomness,
-            object_attached_encoding = 5, goal_encoding = 2, agent_attached_encoding = 6,  goals_coord = self.goals_coord )
-
-        #create new h_agent to get action for heuristic for each new game
-        if self.heuristic_agent == True:
-
-            self.heuristic_randomness =kwargs['all_args'].heuristic_agent_randomness
-
-            print("Heuristic agent randomness set to {}".format(self.heuristic_randomness))
-
-            self.h_agent = HeuristicAgent(shape =[self.shape[0], self.shape[1]], items_number = 9,
-            wall_encoding = 0, agent_encoding = 3, h_agent_encoding = 4, r_agent_encoding = 7, object_encoding = 1, random_factor = self.heuristic_randomness ,
-            object_attached_encoding = 5, goal_encoding = 2, 
-            agent_attached_encoding = 6, dynamic=self.dynamic, obstacle=self.obstacle, three_grid_object=self.three_grid_object)
-        
 
         self.timestep = 0
         self.mode =kwargs['all_args'].mode
@@ -121,37 +75,13 @@ class WarehouseMultiEnv(MultiAgentEnv):
         self.max_steps =kwargs['all_args'].max_steps
 
 
-
-        #both environment and policy agents
-        self.all_agents = self.env_agents + self._agent_ids
-
-        self.goal_area =kwargs['all_args'].goal_area
-
-        env_config = {
-            "reward_game_success": kwargs["all_args"].reward_game_success, # default: 1.0
-            "reward_each_action": kwargs["all_args"].reward_each_action, # default: -0.01
-            "reward_illegal_action": kwargs["all_args"].reward_illegal_action, # default: -0.05
-            "seed": self.seed
-            }
-
-
-
-
-
-        self.game = WarehouseGame_3(env_config,
-            agent_ids=self.all_agents,
+        self.game = WarehouseGame(
+            agent_ids=self._agent_ids,
             shape=self.shape,
             max_steps=self.max_steps,
             seed=self.seed,
             num_objects=self.num_objects,
-            num_goals=self.num_objects,
-            obstacle = self.obstacle,
-            dynamic = self.dynamic,
-            mode = self.mode,
-            goal_area = self.goal_area,
-            #pass the first goals_coordinate as the initial position of dynamic obstacle ie dynamic obstacle will generate at this position when env is created
-            initial_dynamic_pos= self.goals_coord[0],
-            three_grid_object= self.three_grid_object
+            obstacle = self.obstacle
         )
 
 
@@ -165,16 +95,10 @@ class WarehouseMultiEnv(MultiAgentEnv):
         self.terminateds = set()
         self.truncateds = set()
 
-        self.obs_stacking =kwargs['all_args'].obs_stacking
-        self.stacked_layers =kwargs['all_args'].stacked_layers
-        if self.obs_stacking:
-            self.obs_stacked = []
         # # Action space is discrete
         ##allow drop action too in goal_area settings
-        if self.goal_area:
-            self.actions = Actions_extended
-        else:
-            self.actions = Actions_reduced
+ 
+        self.actions = Actions_list
 
         self.n_actions = len(self.actions)
 
@@ -182,21 +106,9 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
         if self.image_observation:
             # image observation; observation space is nd-box
-            if self.obs_stacking:
-                observation_space = spaces.Box(
-                    low=0,
-                    high=255,
-                    shape=(self.stacked_layers,
-                        self.shape[0]*4,
-                        self.shape[1]*4,
-                        3,
-                    ),
-                    dtype="uint8",
-                )
+   
 
-            else:
-
-                observation_space = spaces.Box(
+            observation_space = spaces.Box(
                     low=0,
                     high=255,
                     shape=(
@@ -207,52 +119,37 @@ class WarehouseMultiEnv(MultiAgentEnv):
                     dtype="uint8",
                 )
 
-            # if self.action_masking and self.central_critic:
-            #     observation_space = spaces.Dict(
-            #         {
-            #             "action_mask": spaces.Box(0.0, 1.0, shape=(spaces.Discrete(len(self.actions)).n,)),
-            #             "num_agents": spaces.Box(0.0, 1.0, shape=(spaces.Discrete(len(self._agent_ids)).n,)),
-            #             "observations": observation_space,     
-            #         }
-            #     )
-            # elif self.action_masking:
-            #     observation_space = spaces.Dict(
-            #         {
-            #             "action_mask": spaces.Box(0.0, 1.0, shape=(spaces.Discrete(len(self.actions)).n,)),
-            #             "observations": observation_space,
-            #         }
-            #     )
-
-
 
         else:
             # vector observation: a flattened 3-dim state with one-hot encoded items (=> vector) on grid locations (=> matrix);
-            if self.obs_stacking:
-                observation_space = spaces.MultiBinary([self.stacked_layers, self.shape[0] * self.shape[1] * ItemKind_onehot.num_itemkind])
+    
+            #observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1] * ItemKind_onehot.num_itemkind + 2 + ItemKind_onehot.num_itemkind,),low=-np.inf, high=np.inf, dtype=np.float32)
+            #for not one hot encoding
+            if self.image_observation:
+                observation_space = spaces.Box(
+                    low=0,
+                    high=255,
+                    shape=(
+                        shape[0]*4,
+                        shape[1]*4,
+                        3,
+                    ),
+                    dtype="uint8",
+                )
 
             else:
-                observation_space = spaces.MultiBinary(self.shape[0] * self.shape[1] * ItemKind_onehot.num_itemkind)
-            #observation_space = spaces.Box(low=0.,high=1.,shape=(shape[0] ,shape[1] ,ItemKind_onehot.num_itemkind),dtype="float")
-            # if self.action_masking:
-            #     observation_space = spaces.Dict(
-            #         {
-            #             "action_mask": spaces.Box(0.0, 1.0, shape=(spaces.Discrete(len(self.actions)).n,)),
-            #             "observations": observation_space,
-            #         }
-            #     )
 
-        # self.observation_space = spaces.Dict({"image": oimg}) # orig code cheind
+                if self.partial_observation:
+                    # one hot encoded observation
+                    observation_space = spaces.Box(shape=(3 * 3 * ItemKind_onehot.num_itemkind + 2 + self.num_objects * 6 
+                    + ItemKind_onehot.num_itemkind,),low=-np.inf, high=np.inf, dtype=np.float32)
 
-        # self._obs_space_in_preferred_format = True
-        # self._obs_space_in_preferred_format = True
-        # self.action_space = gym.spaces.Dict()
-        # self.observation_space = gym.spaces.Dict()
+                else:
+                    
 
-
-        
-        # for p_agent in list(self._agent_ids):
-        #     self.action_space[p_agent] =  spaces.Discrete(len(self.actions))
-        #     self.observation_space[p_agent] = observation_space
+                    # one hot encoded observation
+                    observation_space = spaces.Box(shape=(self.shape[0] * self.shape[1] * ItemKind_onehot.num_itemkind + 2 + self.num_objects * 3 
+                    + ItemKind_onehot.num_itemkind,),low=-np.inf, high=np.inf, dtype=np.float32)
 
 
         self.observation_space= [observation_space for _ in range(self.n_agents)]
@@ -261,27 +158,12 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
         self.action_space = [spaces.Discrete(len(self.actions)) for _ in range(self.n_agents)]
 
-    
-
-
-        
- 
-        # if self.action_masking:
-        #     print("+++++ Environment created, observation space is {}".format(self.observation_space["observations"].shape))
-        #     print("+++++ Environment created, action space is {}".format(self.observation_space["action_mask"].shape))
-        # else:
         print("+++++ Environment created, observation space is {}".format(self.observation_space))
         print("+++++ Environment created, action space is {}".format(self.action_space))
-
-   
-
 
 
     def step(self, actions):
 
-        turn_basis = False
-
-      
 
         observations = {}
         rewards = {}
@@ -289,191 +171,81 @@ class WarehouseMultiEnv(MultiAgentEnv):
         infos = {}
         self.timestep += 1
         action_dict_game = {} # maps agent objects to action
-        
-
-
-        #see if object is attached to more than one agent
-        objects_attached = [i for i in self.game.objects if i.attachable != True]
-
-        #if object is attahced by one agent or more
-        obj_agent = [i for i in self.game.objects if len(i.carriers)>0]
-
-        carriers = [] # the list of object carriers, if the object is attached to more than one carrier
-
-       
-###no specidic observation for an agent, sop using same observaTION FOR  all agents
-
-        #random and heuristic agent uses vector observation for path finding
-        default_obs = list(self.render(mode="human", image_observation= False))
-
 
  
-      
-       
 
-         #if object is attached to more than one agent
-        for obj in objects_attached:
-
-            
-
-            
-
-            #select move for herustic algorithm for composite object(object attached to two agents)
-
-            move = self.h_agent.next_move(observation = default_obs , composite = True, goals_area = [(x.loc[0],x.loc[1]) for x in self.game.goals])
+        # add for randomizing
+        actions = np.array(actions)[self.agent_recovery].tolist()
 
 
-            action_dict_game[self.game.agent_dict['heuristic_agent']] = Actions_extended[move] #only heuristic agent will determine the moves
-
-            #to get policy_agent item; remove heuristic agent from carrier copy list and the remaining one is policy agent
-            obj_carr = obj.carriers.copy()
-            obj_carr.remove(self.game.agent_dict['heuristic_agent'])
-            for obj_carrier in obj_carr:
-                policy_agent = obj_carrier
-
-            
-                action_dict_game[policy_agent] = Actions_extended[6] #policy agent will do nothing
-                carriers.extend(obj.carriers)
-    
-
-
-        for agent in self.all_agents:
+        for agent in self._agent_ids :
 
             agent_obj = self.game.agent_dict[agent]
-    
 
-            # img =self.render(mode="rgb_array", image_observation= True)
+            agent_index = int(agent.split('_')[-1])
 
-            # fig, ax = plt.subplots()
-            # mpl_img = ax.imshow(img)
-            # mpl_img.set_data(img)
-            # fig.canvas.draw()
-            # plt.savefig("test_img.jpg")
-         
-
-    
-            if agent != 'random_agent':
-                if agent_obj not in carriers and agent_obj.attached:
-                    # agent_obj is attached to the object but the object is not attached by all agents yet
-
-                    if self.goal_area and agent != "heuristic_agent":
-
-                        agent_index = int(agent.split('_')[-1]) - 1 
-                        
-                        action_dict_game[agent_obj] = Actions_extended[actions[agent_index][0]] #get move from policy 
-                    else:
-                        action_dict_game[agent_obj] = Actions_extended[6] #do nothing if agent_obj is attached but not in the carriers list
-
-
-
-
-
-                elif agent_obj not in carriers:
-                    #if agent is not attached and not in carriers list
-
-                    
-                    
-                    if agent == 'heuristic_agent':
-                        #if turn basis on then heuristic agent will do nothing if the other agent is having a move; heuristic agent will only move when other agent is not moving
-                        #turn basis True means only one step at a time, if heuristic agent is passed as doing nothing and none of the agent is attached to the object
-                        if turn_basis and action_dict['heuristic_agent'] == 6 and len(obj_agent)<1:
-                            move = 6 #heuristic agent does nothing
-                        else:
-  
-                            move = self.h_agent.next_move(observation = default_obs , composite = False, goals_area = [(x.loc[0],x.loc[1]) for x in self.game.goals]) #get move from heruistic algorithm
-                                
-                        action_dict_game[agent_obj] = Actions_extended[move]
-
-                    else:
-                        #turn basis True means only one step at a time, if heuristic agent is making move and none of the agent is attached to the object
-                        if turn_basis and action_dict['heuristic_agent'] != 6 and len(obj_agent)<1:
-                            action_dict_game[agent_obj] = Actions_extended[6] #policy agents does nothing
-                        else:
-
-                            agent_index = int(agent.split('_')[-1]) - 1 #-1 beacuse we are using agent id starts from 1 and we use it for indexing
-
-   
-                            
-                        
-                            action_dict_game[agent_obj] = Actions_extended[actions[agent_index][0]] #get move from policy for other agents
                 
-              
+            action_dict_game[agent_obj] = Actions_list[actions[agent_index][0]] #get move from policy 
 
-                            
-            else:
+            # print("input the action for", agent)
+            # act = input()
+            # print(act)
+            # action_dict_game[agent_obj] = act
+            
 
-                    #if agent is random agent
+  
                     
-
-                    #get random agent move from heuristic pass goal loc and observation 
- 
-                    random_agent_move= self.r_agent.next_move(observation = default_obs)
-                     
-                    action_dict_game[agent_obj] =Actions_extended[random_agent_move] 
-
-        
-
-                        
     
         self.game.step(action_dict_game)
 
 
-    
-                    
+        # print("generate image")
+        # g = input()
+        # self.save_image()
+        
         terminateds["__all__"] = self.game.done
 
-
-
-        #after a step is taken swap the observations if obs stacking is used 
-
-        obs = self.get_obs_agent(0)
 
         truncateds = {}
 
         rewards = []
         dones = []
         infos = []
+
+
         for agent in self._agent_ids:
-        
+
+            
+
             rewards.append([self.game.reward_history[agent][-1]])
             dones.append( self.game.step_data[agent]['terminated'])
-            infos.append( self.game.step_data[agent]['infos'])
 
 
-                #reset the game and start new if game is terminated
-        if self.game.done:
             
-            self.reset()
-
-         
-    
-            # observations[agent] = obs[agent]
-            # rewards[agent] = self.game.reward_history[agent][-1]
-            # terminateds[agent] = self.game.step_data[agent]['terminated'] 
-
-            # truncateds[agent] =  self.game.step_data[agent]["infos"]["steps_exceeded"] == -1 #equals to -1 means step exceeded so episode is truncated
-            # infos[agent] = self.game.step_data[agent]['infos']
-            # truncateds["__all__"] = truncateds[agent] 
-            # for debugging
-        #     # print("agent {} action mask: {}".format(agent, observations[agent]["action_mask"]))
-        
-        # # return reward_n, done_n, info
-        # rewards = [[reward_n]] * self.n_agents
-        # dones = [done_n] * self.n_agents
-        # infos = [info for _ in range(self.n_agents)]
-        # # print("obs: ", self.get_obs())
-        # # print("state: ", self.get_state())
-
+            self.game.step_data[agent]['infos']['reward_till'] = (self.game.reward_history[agent])
+            infos.append( self.game.step_data[agent]['infos'])
       
+       
+
+        rewards = np.array(rewards)[self.agent_permutation]
+        dones = np.array(dones)[self.agent_permutation]
+        infos = np.array(infos)[self.agent_permutation]
+
+        local_obs = np.array(self.get_obs())[self.agent_permutation]
 
 
-        # if self.game.step_data[agent]['terminated']:
-        #     self.game.reset(deterministic_game= self.deterministic_game, goal_area=self.goal_area)
+        global_state = local_obs
+        available_actions = np.array(self.get_avail_actions())[self.agent_permutation]
 
+       
 
+        return local_obs, global_state, rewards, dones, infos, available_actions
 
-        return self.get_obs(), self.get_state(), rewards, dones, infos, self.get_avail_actions()
-
+    # add for randomizing
+    def permutate_idx(self):
+        self.agent_permutation = np.random.permutation(self.n_agents)
+        self.agent_recovery = [np.where(self.agent_permutation == i)[0][0] for i in range(self.n_agents)]
+        self.agent_recovery = np.array(self.agent_recovery)
 
 
 
@@ -484,62 +256,59 @@ class WarehouseMultiEnv(MultiAgentEnv):
         self.timestep = 0
         infos = {}
         obs_env = {}
+
+        # add for randomizing
+        self.permutate_idx()
+
+
         if self.deterministic_game == True:
-            self.game.reset(deterministic_game=True, seed = self.seed , goal_area=self.goal_area)
+            self.game.reset(deterministic_game=True, seed = self.seed , goal_area=True)
         else:
-            self.game.reset(deterministic_game=False, seed= self.seed , goal_area=self.goal_area)
-        #print("+++++ RESET returning:")
-        #print(self._gen_obs())
-
-        if self.obs_stacking: #reset stacked obs when game is reset
-            self.obs_stacked = []
-
-         #reset goal weights for dynamic obstacle/random agent whenever environment is reset   
-        if self.dynamic and self.obstacle: 
-            self.r_agent.goals_weights =  [(self.r_agent.goals_coord.index(i)+1)/10 for i in self.r_agent.goals_coord]
+            self.game.reset(deterministic_game=False, seed= self.seed)
 
 
+       # add for randomizing
+
+       
+        local_obs = np.array(self.get_obs())[self.agent_permutation]
 
 
-        # for agent in self._agent_ids:
-        #     obs_env[agent], infos[agent] = obs[agent],  ''
-        
+        global_state = local_obs
+        available_actions = np.array(self.get_avail_actions())[self.agent_permutation]
 
-        return self.get_obs(), self.get_state(), self.get_avail_actions()
-
+      
 
 
+        return local_obs, global_state, available_actions
 
+    def save_image(self):
+        img =self.render(mode="rgb_array", image_observation= True)
 
-
-
-
-
-
+        fig, ax = plt.subplots()
+        mpl_img = ax.imshow(img)
+        mpl_img.set_data(img)
+        fig.canvas.draw()
+        plt.savefig("test_img.jpg")
+        plt.close()
+   
 
 
 
 
 
-    # def get_obs(self):
-    #     """ Returns all agent observat3ions in a list """
-    #     state = self.env._get_obs()
-    #     obs_n = []
-    #     for a in range(self.n_agents):
-    #         agent_id_feats = np.zeros(self.n_agents, dtype=np.float32)
-    #         agent_id_feats[a] = 1.0
-    #         # obs_n.append(self.get_obs_agent(a))
-    #         # obs_n.append(np.concatenate([state, self.get_obs_agent(a), agent_id_feats]))
-    #         # obs_n.append(np.concatenate([self.get_obs_agent(a), agent_id_feats]))
-    #         obs_i = np.concatenate([state, agent_id_feats])
-    #         obs_i = (obs_i - np.mean(obs_i)) / np.std(obs_i)
-    #         obs_n.append(obs_i)
-    #     return obs_n
+
+
+
+
+
+
 
     def get_obs(self):
         """ Returns all agent observat3ions in a list """
         # state = self.env._get_obs()
         obs_n = []
+
+
 
         for a in range(self.n_agents):
             # agent_id_feats = np.zeros(self.n_agents, dtype=np.float32)
@@ -552,20 +321,92 @@ class WarehouseMultiEnv(MultiAgentEnv):
                 obs_i = (obs_i - np.mean(obs_i)) / np.std(obs_i)
             else:
                 obs_i = self.get_obs_agent(a)
+
             obs_n.append(obs_i)
+
    
         return obs_n
 
     def get_obs_agent(self, agent_id):
+
+        if self.image_observation:
+            return grid_world
+
+
+        if agent_id % 2 == 0:
+            agent_id = f"agent_{agent_id}"
+        else:
+            agent_id = f"heuristic_agent_{agent_id}"
+
         
-        return self.render(mode="rgb_array", image_observation=self.image_observation)
+
+        agent_loc = self.game.agent_dict[agent_id].loc
 
 
-            # return build_obs(self.env,
-            #                  self.k_dicts[agent_id],
-            #                  self.k_categories,
-            #                  self.mujoco_globals,
-            #                  self.global_categories)
+        grid_world = self.render(mode="rgb_array", image_observation=self.image_observation, 
+        partial_observation= self.partial_observation, loc = agent_loc)
+
+
+        # agent_encode = [ItemKind_encode.encoding[self.game.agent_dict[agent_id].kind]]
+
+        agent_encode = ItemKind_onehot.encoding[self.game.agent_dict[agent_id].kind]
+
+        objects_loc = np.array([x.loc for x in self.game.objects])
+
+        objects_attach = np.array([1 if x.kind == ItemKind.OBJECT else 0 for x in self.game.objects])
+
+        goal_loc = np.array([x.loc for x in self.game.goals])
+
+        object_g_loc = [tuple(i.loc) for i in self.game.objects if i.kind == ItemKind.WALL]
+
+
+ 
+
+        goal_free = np.array([1 if tuple(x.loc) not in object_g_loc else 0 for x in self.game.goals])
+    
+
+
+        return np.concatenate([agent_loc, goal_loc.flatten(), goal_free, objects_loc.flatten(), objects_attach,
+                               np.array(agent_encode), grid_world], axis = 0)
+
+
+
+    def get_obs_objects(self):
+
+        obj_obs = []
+
+        for object in self.game.objects:
+
+            object_loc = object.loc
+
+
+            grid_world = self.render(mode="rgb_array", image_observation=self.image_observation, 
+            partial_observation= self.partial_observation, loc = object_loc)
+
+
+            # agent_encode = [ItemKind_encode.encoding[self.game.agent_dict[agent_id].kind]]
+
+            object_encode = ItemKind_onehot.encoding[object.kind]
+
+            objects_loc = np.array([x.loc for x in self.game.objects])
+
+            objects_attach = np.array([1 if x.kind == ItemKind.OBJECT else 0 for x in self.game.objects])
+
+            goal_loc = np.array([x.loc for x in self.game.goals])
+
+            object_g_loc = [tuple(i.loc) for i in self.game.objects if i.kind == ItemKind.WALL]
+
+    
+
+            goal_free = np.array([1 if tuple(x.loc) not in object_g_loc else 0 for x in self.game.goals])
+
+        
+
+
+            obj_obs.append(np.concatenate([object_loc, goal_loc.flatten(), goal_free, objects_loc.flatten(), objects_attach,
+                                np.array(object_encode), grid_world], axis = 0))
+
+        return np.array(obj_obs)
 
     def get_obs_size(self):
         """ Returns the shape of the observation """
@@ -602,7 +443,10 @@ class WarehouseMultiEnv(MultiAgentEnv):
 
     def get_avail_agent_actions(self, agent_id):
         """ Returns the available actions for agent_id """
-        agent_obj = self.game.agent_dict[f'agent_{agent_id + 1}']
+        if agent_id % 2 == 0 : #robot agent if even
+            agent_obj = self.game.agent_dict[f'agent_{agent_id}']
+        else:
+            agent_obj = self.game.agent_dict[f'heuristic_agent_{agent_id}']
         action_mask = self.gen_action_mask(agent_obj)
         action_mask = np.asarray(action_mask, dtype='float32')
         
@@ -613,27 +457,135 @@ class WarehouseMultiEnv(MultiAgentEnv):
     def gen_action_mask(self, agent_obj):
         """
         generates the action mask, corresponding to the current status of param agent_obj;
+
         """
+        action_mask = [1., 1., 1., 1., 1., 1.]
+
         if agent_obj.attached:
-            # object already attached => no pick action available
-            if len(agent_obj._reachable_goals(agent_obj.picked_object)) > 0:
-                # a goal is reachable, allow drop action
-                action_mask = [1., 1., 1., 1., 0., 1., 1.]  # [left, right, up, down, pick, drop, do_nothing]
-            else:
-                # no goal is reachable, mask out drop action
-                action_mask = [1., 1., 1., 1., 0., 0., 1.]
+            # # object already attached => no pick action available
+            # if len(agent_obj._reachable_goals(agent_obj.picked_object)) > 0:
+            #     # a goal is reachable, allow drop action
+            #     action_mask = [1., 1., 1., 1., 1., 1.]  # [left, right, up, down, pick/drop, do_nothing]
+            # else:
+            #     # no goal is reachable, mask out drop action
+            #     action_mask = [1., 1., 1., 1., 0., 1.]
+
+            
+
+            
     
             if agent_obj.picked_object.attachable:
-                action_mask = [0., 0., 0., 0., 0., 1., 1.] #mask out everything except drop and do nothing if the agent is attached but object still need more agents 
+                #mask out everything except drop and do nothing if the agent is attached but object still need more agents 
+                return ([0., 0., 0., 0., 1., 1.])
+            
+            elif agent_obj.kind == ItemKind.AGENT_ATTACHED:
+                #mask out everything except do_nothing if the robot agent is attached and object is attached by both robot and heuristic agents
+                return ([0., 0., 0., 0., 0., 1.])
+
+            #now if object is composite; have to take care of both driven agent and objects
+    
+            elif agent_obj.kind == ItemKind.H_AGENT_ATTACHED: #composite object
+            
+                picked_obj = agent_obj.picked_object
+                driven_agent = [x for x in picked_obj.carriers if x != agent_obj][0]
+
+                goals_loc = [x.loc for x in self.game.goals]
+
+        
+
+                if any(np.array_equal(np.array(picked_obj.loc), arr) for arr in goals_loc):
+                    action_mask[4] = 1.0 
+                else:
+                    action_mask[4] = 0.0 #mask out drop option if the object is not in goal grid cel
+
+
+                #no impassable moves for picked_object
+
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("left", picked_obj)
+                if adjacent_to_impassable and (impassable_item != agent_obj and impassable_item != driven_agent):
+                    action_mask[0] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("right", picked_obj)
+                if adjacent_to_impassable and (impassable_item != agent_obj and impassable_item != driven_agent):
+                    action_mask[1] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("up", picked_obj)
+                if adjacent_to_impassable and (impassable_item != agent_obj and impassable_item != driven_agent):
+                    action_mask[2] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("down", picked_obj)
+                if adjacent_to_impassable and (impassable_item != agent_obj and impassable_item != driven_agent):
+                    action_mask[3] = 0.
+
+
+                #no impassable moves for driven agent
+
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("left", driven_agent)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[0] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("right", driven_agent)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[1] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("up", driven_agent)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[2] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("down", driven_agent)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[3] = 0.
+
+                
+                #no impassable moves for driving agent
+
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("left", agent_obj)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[0] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("right", agent_obj)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[1] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("up", agent_obj)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[2] = 0.
+                adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("down", agent_obj)
+                if adjacent_to_impassable and (impassable_item != picked_obj):
+                    action_mask[3] = 0.
+
+            # print(agent_obj.kind, picked_obj.attachable,picked_obj.carriers )
+            # print("composite objecr heuristic agent selecting move", action_mask)
+            # print("-------------------------")
+
+            return action_mask
+
+
+
+
                 
         else:
             # no object attached => no drop action available
             if len(agent_obj._reachable_objects()) > 0:
                 # at least one object is reachable, allow pick action
-                action_mask = [1., 1., 1., 1., 1., 0., 1.]
+                action_mask = [1., 1., 1., 1., 1., 1.]
             else:
                 # no object reachable, mask out pick action
-                action_mask = [1., 1., 1., 1., 0., 0., 1.]
+                action_mask = [1., 1., 1., 1., 0, 1.]
+
+        
+
+        #no impassable moves for driven agent
+
+        adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("left",agent_obj)
+        if adjacent_to_impassable:
+            action_mask[0] = 0.
+        adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("right",agent_obj)
+        if adjacent_to_impassable:
+            action_mask[1] = 0.
+        adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("up",agent_obj)
+        if adjacent_to_impassable:
+            action_mask[2] = 0.
+        adjacent_to_impassable, impassable_item = self.game.is_adjacent_to_impassable("down",agent_obj)
+        if adjacent_to_impassable:
+            action_mask[3] = 0.
+
+
+
+
+    
         return action_mask
 
     def get_total_actions(self):
@@ -654,8 +606,10 @@ class WarehouseMultiEnv(MultiAgentEnv):
     #     self.timelimit_env.reset()
      
 
-    def render(self, mode="human", image_observation:bool=True):
-        state = self.game.render(image_observation=image_observation) # state can be an image or a matrix
+    def render(self, mode = "human", image_observation: bool = True, partial_observation: bool = False, loc=None) -> np.ndarray:
+
+        state = self.game.render(image_observation=image_observation, partial_observation = partial_observation,
+        loc = loc) # state can be an image or a matrix
         if mode == "human" and image_observation:
             if self.viewer is None:
                 from gym.envs.classic_control import rendering

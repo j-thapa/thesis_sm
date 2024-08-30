@@ -1,6 +1,6 @@
 import numpy as np
 from typing import List
-from .items import ItemKind, ItemKind_onehot
+from .items import ItemKind, ItemKind_encode, ItemKind_onehot
 from . import art
 import matplotlib
 import matplotlib.pyplot as plt
@@ -90,24 +90,15 @@ DEFAULT_SPRITES = {
         ],
         DEFAULT_COLORS,
     ),
-    ItemKind.R_AGENT: art.Sprite.from_text(
-        [
-            ".yy.",
-            "yyyy",
-            "yyyy",
-            ".yy.",
-        ],
-        DEFAULT_COLORS,
-    ),
 }
 
-DEFAULT_ORDER = [ItemKind.WALL,   ItemKind.GOAL, ItemKind.OBJECT,  ItemKind.AGENT, ItemKind.H_AGENT, ItemKind.OBJECT_ATTACHED, ItemKind.AGENT_ATTACHED, ItemKind.R_AGENT, ItemKind.H_AGENT_ATTACHED]
+DEFAULT_ORDER = [ItemKind.GOAL, ItemKind.WALL,    ItemKind.OBJECT,  ItemKind.AGENT, ItemKind.H_AGENT, ItemKind.OBJECT_ATTACHED, ItemKind.AGENT_ATTACHED, ItemKind.H_AGENT_ATTACHED]
 
 
 
 
 
-def render(engine, order: List[ItemKind] = None, image_observation:bool=True) -> np.ndarray:
+def render(engine, order: List[ItemKind] = None, image_observation:bool=True, partial_observation = False, loc = None) -> np.ndarray:
     """
     returns the current state of the world being represented by param "engine"; the state may be returned as an image
     (if param "image_observation" is True) or as a (flattened) 3-dim array, with one-hot encoded items on grid locations;
@@ -116,6 +107,31 @@ def render(engine, order: List[ItemKind] = None, image_observation:bool=True) ->
     state = None # return value; the actual engine state
     if order is None:
         order = DEFAULT_ORDER
+
+    if partial_observation:
+
+        #only 3x3 observation with loc being center is the state
+
+        partial_state = []
+        center_x, center_y = loc
+        partial_coordinates = [(x, y) for x in range(center_x - 1, center_x + 2)
+                     for y in range(center_y - 1, center_y + 2)]
+
+        state = np.zeros(shape=(H,W,1), dtype='int32')
+        for it in engine.items(order=order):
+
+            state[it.loc[0]][it.loc[1]] = ItemKind_encode.encoding[it.kind]
+        
+      
+
+        partial_state =  np.array([ItemKind_onehot.encode_one_hot[int(state[x[0]][x[1]])] for x in partial_coordinates])
+
+
+
+        return partial_state.flatten()
+
+
+
 
    
 
@@ -133,94 +149,22 @@ def render(engine, order: List[ItemKind] = None, image_observation:bool=True) ->
         state = img
     else:
         state = np.zeros(shape=(H,W,ItemKind_onehot.num_itemkind), dtype='int32')
+
+
+        # state = np.zeros(shape=(H,W,1), dtype='int32')
         for it in engine.items(order=order):
-            if any(isinstance(loc, np.ndarray) for loc in list(it.loc)):
-                for loc_ in it.loc:
-                    
-                    state[loc_[0]][loc_[1]] = ItemKind_onehot.encoding[it.kind]
-            else:
-                state[it.loc[0]][it.loc[1]] = ItemKind_onehot.encoding[it.kind]
-            
+
+            # state[it.loc[0]][it.loc[1]] = ItemKind_encode.encoding[it.kind]
+
+            #one hot encoding
+            state[it.loc[0]][it.loc[1]] = ItemKind_onehot.encoding[it.kind]
+
+        
             
 
-   
 
         state = state.flatten()
+   
 
     return state
-
-
-#function to render one hot encoded encoded observation from evaluation csv to images
-def render_observation(observation, shape):
-
-    #string formatting to format and convert obs to int
-    temp_grid = []
-    obs = observation.replace('\n', '').replace('\r','')
-    obs = obs.replace('[','').replace(']','').replace('.','')
-    obs = obs.split(' ')
-    observation = [int(x) for x in obs]
-
-
- 
-    
-    item_num = len(DEFAULT_ORDER)
-    for x in range(0, len(observation), item_num):
-
-        if observation [x:x + item_num] [0] == 1 : 
-            temp_grid.append(0) #wall
-
-
-        elif observation [x:x + item_num] [1] == 1 :
-            temp_grid.append(2) #goal
-
-        elif observation [x:x + item_num] [2] == 1 :
-            temp_grid.append(1) #object
-
-
-
-        elif observation [x:x + item_num] [3] == 1 :
-            temp_grid.append(3) #agent
-
-        elif observation [x:x + item_num] [4] == 1 :
-            temp_grid.append(4) #heuristic_agent
-
-
-        elif observation [x:x + item_num] [5] == 1 :
-            temp_grid.append(5) #attached object
-
-        elif observation [x:x + item_num] [6] == 1 :
-            temp_grid.append(6) #attached agent
-
-        elif observation [x:x + item_num] [7] == 1 :
-            temp_grid.append(7) #random agent/ dynamic obstacle
-
-        elif observation [x:x + item_num] [8] == 1 :
-            temp_grid.append(8) #heuristic_agent_attached
-
-
-        else:
-            temp_grid.append(-1) #free grid cells
-    
-    #reshape matrix into shape of observation
-    matrix = np.array(temp_grid).reshape([shape[0],shape[1]])
-    items =[]
-
-    for r_idx,row in enumerate(matrix): #loop through rows of matrix
-        for c_idx,column in enumerate(row): #loop through columns of the row
-       
-            if column != -1: #if it is not grid cell
-          
-                items.append((DEFAULT_ORDER[column],(r_idx,c_idx))) #append the item type based on column value along wih its position set
-
-   #create empty image
-    img = art.create_image([shape[0],shape[1]])
-
-
-    #add items in the image based on items kind and their position set
-    for it in items:
-        DEFAULT_SPRITES[it[0]].draw(img[it[1][1], it[1][0]])
-    
-    #final image
-    img = art.finalize_image(img)
-    return img
 

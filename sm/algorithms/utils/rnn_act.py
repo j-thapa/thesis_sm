@@ -44,6 +44,7 @@ def continuous_autoregreesive_act(decoder, obs_rep, obs, batch_size, n_agent, ac
     for i in range(n_agent):
         if state is None:
             act_mean_, state = decoder(shifted_action, obs_rep, None)
+            
             act_mean = act_mean_[:, i, :]
             
 

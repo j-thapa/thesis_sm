@@ -10,6 +10,11 @@ def discrete_autoregreesive_act(decoder, obs_rep, obs, batch_size, n_agent, acti
     output_action = torch.zeros((batch_size, n_agent, 1), dtype=torch.long)
     output_action_log = torch.zeros_like(output_action, dtype=torch.float32)
 
+
+
+
+
+
     for i in range(n_agent):
         logit = decoder(shifted_action, obs_rep, obs)[:, i, :]
         if available_actions is not None:
@@ -32,8 +37,10 @@ def discrete_parallel_act(decoder, obs_rep, obs, action, batch_size, n_agent, ac
     one_hot_action = F.one_hot(action.squeeze(-1), num_classes=action_dim)  # (batch, n_agent, action_dim)
     shifted_action = torch.zeros((batch_size, n_agent, action_dim + 1)).to(**tpdv)
     shifted_action[:, 0, 0] = 1
+  
     shifted_action[:, 1:, 1:] = one_hot_action[:, :-1, :]
     logit = decoder(shifted_action, obs_rep, obs)
+
     if available_actions is not None:
         logit[available_actions == 0] = -1e10
 

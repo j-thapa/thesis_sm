@@ -43,6 +43,13 @@ class SharedReplayBuffer(object):
         self.algo = args.algorithm_name
         self.num_agents = num_agents
         self.env_name = env_name
+        if "WarehouseEnv" in self.env_name:
+            self.num_objects = args.num_objects
+        
+
+    
+
+
 
         obs_shape = get_shape_from_obs_space(obs_space)
         share_obs_shape = get_shape_from_obs_space(cent_obs_space)
@@ -53,8 +60,18 @@ class SharedReplayBuffer(object):
         if type(share_obs_shape[-1]) == list:
             share_obs_shape = share_obs_shape[:1]
 
+        # code to encode observation of objects as sequence
+
+        # if self.env_name == "WarehouseEnv" :
+        #     self.share_obs = np.zeros((self.episode_length + 1, self.n_rollout_threads, num_agents + self.num_objects, *share_obs_shape),
+        #                           dtype=np.float32)
+        # #     self.obs = np.zeros((self.episode_length + 1, self.n_rollout_threads, num_agents + self.num_objects, *obs_shape), dtype=np.float32)
+
+
+        # else:
+
         self.share_obs = np.zeros((self.episode_length + 1, self.n_rollout_threads, num_agents, *share_obs_shape),
-                                  dtype=np.float32)
+                                dtype=np.float32)
         self.obs = np.zeros((self.episode_length + 1, self.n_rollout_threads, num_agents, *obs_shape), dtype=np.float32)
 
         self.rnn_states = np.zeros(
@@ -237,12 +254,22 @@ class SharedReplayBuffer(object):
         sampler = [rand[i * mini_batch_size:(i + 1) * mini_batch_size] for i in range(num_mini_batch)]
         rows, cols = _shuffle_agent_grid(batch_size, num_agents)
 
+        #code to encode observation of object as sequence
+        # if self.env_name == "WarehouseEnv":
+        #     rows_obs, cols_obs =  _shuffle_agent_grid(batch_size, num_agents + self.num_objects)
+ 
+        rows_obs, cols_obs = _shuffle_agent_grid(batch_size, num_agents)
+
+
         # keep (num_agent, dim)
         share_obs = self.share_obs[:-1].reshape(-1, *self.share_obs.shape[2:])
-        share_obs = share_obs[rows, cols]
+        share_obs = share_obs[rows_obs, cols_obs]
         obs = self.obs[:-1].reshape(-1, *self.obs.shape[2:])
-        obs = obs[rows, cols]
+     
+
+        obs = obs[rows_obs, cols_obs]
         rnn_states = self.rnn_states[:-1].reshape(-1, *self.rnn_states.shape[2:])
+      
         rnn_states = rnn_states[rows, cols]
         rnn_states_critic = self.rnn_states_critic[:-1].reshape(-1, *self.rnn_states_critic.shape[2:])
         rnn_states_critic = rnn_states_critic[rows, cols]

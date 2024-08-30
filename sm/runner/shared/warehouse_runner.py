@@ -5,6 +5,7 @@ from functools import reduce
 import torch
 from sm.runner.shared.base_runner import Runner
 
+
 def _t2n(x):
     return x.detach().cpu().numpy()
 
@@ -43,6 +44,7 @@ class WarehouseRunner(Runner):
                 # Obser reward and next obs
                 obs, share_obs, rewards, dones, infos, available_actions = self.envs.step(actions)
                 dones_env = np.all(dones, axis=1)
+             
                
  
                 for t in range(self.n_rollout_threads):
@@ -73,6 +75,8 @@ class WarehouseRunner(Runner):
                        values, actions, action_log_probs, \
                        rnn_states, rnn_states_critic 
                 
+
+                
                 
                 
                 # insert data into buffer
@@ -100,13 +104,15 @@ class WarehouseRunner(Runner):
             # log information
             if episode % self.log_interval == 0:
                 end = time.time()
-                print("\n Algo {} updates {}/{}, total num timesteps {}/{}, FPS {}.\n"
+                exp_info =  f"shape_{self.all_args.grid_shape[0]}_ag_{self.all_args.pair_agents}_obj_{self.all_args.num_objects}_ {self.all_args.exp_name}"
+                print("\n Algo {} updates {}/{}, total num timesteps {}/{}, EXP {} FPS {}.\n"
                         .format(
                                 self.algorithm_name,
                                 episode,
                                 policy_updates,
                                 total_num_steps,
                                 self.num_env_steps,
+                                exp_info,
                                 int(total_num_steps / (end - start))))
 
                 print(" reward rate is {}.".format(reward_rate))
@@ -126,11 +132,11 @@ class WarehouseRunner(Runner):
                 #         incre_terminated.append(info[0]['terminated']-last_terminated[i])
 
 
-                if self.use_wandb:
-                    wandb.log({"incre_win_rate": incre_win_rate}, step=total_num_steps)
-                else:
-                    self.writter.add_scalars("train_success_rate", {"train_success_rate": success_rate}, total_num_steps)
-                    self.writter.add_scalars("eps_reward_rate", {"train_reward_rate": reward_rate}, total_num_steps)
+                # if self.use_wandb:
+                #     wandb.log({"incre_win_rate": incre_win_rate}, step=total_num_steps)
+                # else:
+                self.writter.add_scalars("train_success_rate", {"train_success_rate": success_rate}, total_num_steps)
+                self.writter.add_scalars("eps_reward_rate", {"train_reward_rate": reward_rate}, total_num_steps)
                   
 
                 # last_terminated = terminated
@@ -158,7 +164,7 @@ class WarehouseRunner(Runner):
 
 
 
-  
+        
         self.buffer.share_obs[0] = share_obs.copy()
         self.buffer.obs[0] = obs.copy()
         self.buffer.available_actions[0] = available_actions.copy()
@@ -176,6 +182,7 @@ class WarehouseRunner(Runner):
         # [self.envs, agents, dim]
         values = np.array(np.split(_t2n(value), self.n_rollout_threads))
         actions = np.array(np.split(_t2n(action), self.n_rollout_threads))
+    
         action_log_probs = np.array(np.split(_t2n(action_log_prob), self.n_rollout_threads))
         rnn_states = np.array(np.split(_t2n(rnn_state), self.n_rollout_threads))
         rnn_states_critic = np.array(np.split(_t2n(rnn_state_critic), self.n_rollout_threads))
@@ -229,12 +236,17 @@ class WarehouseRunner(Runner):
 
         eval_obs, eval_share_obs, eval_available_actions = self.eval_envs.reset()
 
+    
+
         eval_rnn_states = np.zeros((self.n_eval_rollout_threads, self.num_agents, self.recurrent_N, self.hidden_size), dtype=np.float32)
         eval_masks = np.ones((self.n_eval_rollout_threads, self.num_agents, 1), dtype=np.float32)
-
+        
+        curr = 0
+        start_time =  time.time()
         while True:
 
             self.trainer.prep_rollout()
+
             eval_actions, eval_rnn_states = \
                 self.trainer.policy.act(np.concatenate(eval_share_obs),
                                         np.concatenate(eval_obs),
@@ -244,11 +256,14 @@ class WarehouseRunner(Runner):
                                         deterministic=True)
             eval_actions = np.array(np.split(_t2n(eval_actions), self.n_eval_rollout_threads))
             eval_rnn_states = np.array(np.split(_t2n(eval_rnn_states), self.n_eval_rollout_threads))
+
+     
             
             # Obser reward and next obs
+
             eval_obs, eval_share_obs, eval_rewards, eval_dones, eval_infos, eval_available_actions = self.eval_envs.step(eval_actions)
             one_episode_rewards.append(eval_rewards)
-
+            curr = curr + self.n_eval_rollout_threads
             eval_dones_env = np.all(eval_dones, axis=1)
 
             eval_rnn_states[eval_dones_env == True] = np.zeros(((eval_dones_env == True).sum(), self.num_agents, self.recurrent_N, self.hidden_size), dtype=np.float32)
@@ -256,6 +271,10 @@ class WarehouseRunner(Runner):
             eval_masks = np.ones((self.all_args.n_eval_rollout_threads, self.num_agents, 1), dtype=np.float32)
             eval_masks[eval_dones_env == True] = np.zeros(((eval_dones_env == True).sum(), self.num_agents, 1), dtype=np.float32)
 
+
+            
+            
+            
             for eval_i in range(self.n_eval_rollout_threads):
                 if eval_dones_env[eval_i]:
                     eval_episode += 1

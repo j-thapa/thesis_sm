@@ -1,3 +1,12 @@
+"""
+RWKV block and code implementation has been adapted from nanoRWKV implemntation https://github.com/Hannibal046/nanoRWKV
+
+The encoder and decoder mechanisms implementation has been followed and adapted from MAT implementation https://github.com/PKU-MARL/Multi-Agent-Transformer
+"""
+
+
+
+
 import math,time
 
 import torch
@@ -173,18 +182,7 @@ class TimeMixing(nn.Module):
             return WKVKernel.apply(B, T, C, self.time_decay, self.time_first, key, value), None
 
         else:
-            print("""
-            
-            ______________state was not none, no cuda used++++++++++++++++++++++++++++++++++++
-            ______________state was not none, no cuda used++++++++++++++++++++++++++++++++++++
-            ______________state was not none, no cuda used++++++++++++++++++++++++++++++++++++
-            ______________state was not none, no cuda used++++++++++++++++++++++++++++++++++++
-            ______________state was not none, no cuda used++++++++++++++++++++++++++++++++++++
-            ______________state was not none, no cuda used++++++++++++++++++++++++++++++++++++
-            
 
-            
-            """)
          
 
             
@@ -288,7 +286,7 @@ class RWKV(nn.Module):
         self.rescale_every = 6
 
 
-        self.rwkv =        self.rwkv = nn.ModuleDict(dict(
+        self.rwkv = nn.ModuleDict(dict(
             h = nn.ModuleList([Block(self.n_embd,layer_id) for layer_id in range(self.n_layer)]),
             ln_f = LayerNorm(self.n_embd, bias= False),
         ))
@@ -402,7 +400,7 @@ class RWKV(nn.Module):
         from torch.utils.cpp_extension import load
         T_MAX = 45
         RWKV_FLOAT_MODE = dtype
-        cuda_dir = "/system/user/studentwork/thapa/rware/sm/algorithms/sm/algorithm/cuda"
+        cuda_dir = "/home/PROFACTOR.LOCAL/jthapa/rware/sm/algorithms/sm/algorithm/cuda"
 
         print("load from directory")
     

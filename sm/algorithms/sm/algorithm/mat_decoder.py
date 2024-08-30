@@ -1,3 +1,10 @@
+"""
+
+Code from MAT implementation https://github.com/PKU-MARL/Multi-Agent-Transformer
+
+"""
+
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F

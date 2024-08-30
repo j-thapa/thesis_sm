@@ -1,3 +1,10 @@
+"""
+
+The code is extracted from MAT implementation https://github.com/PKU-MARL/Multi-Agent-Transformer
+
+"""
+
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -153,7 +160,10 @@ class Encoder(nn.Module):
                 obs_embeddings = self.obs_encoder(obs)
                 x = obs_embeddings
 
-        rep = self.blocks(self.ln(x))
+        reps = self.blocks(self.ln(x))
+        
+        rep = reps[:, -self.n_agent:, :]
+
         v_loc = self.head(rep)
 
         return v_loc, rep
@@ -270,6 +280,8 @@ class MultiAgentTransformer(nn.Module):
         ori_shape = np.shape(state)
         state = np.zeros((*ori_shape[:-1], 37), dtype=np.float32)
 
+     
+
         state = check(state).to(**self.tpdv)
         obs = check(obs).to(**self.tpdv)
         action = check(action).to(**self.tpdv)
@@ -279,6 +291,7 @@ class MultiAgentTransformer(nn.Module):
 
         batch_size = np.shape(state)[0]
         v_loc, obs_rep = self.encoder(state, obs)
+  
         if self.action_type == 'Discrete':
             action = action.long()
             action_log, entropy = discrete_parallel_act(self.decoder, obs_rep, obs, action, batch_size,

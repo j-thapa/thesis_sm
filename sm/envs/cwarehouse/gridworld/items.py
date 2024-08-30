@@ -13,57 +13,101 @@ if TYPE_CHECKING:
 
 @unique
 class ItemKind(IntFlag):
-    WALL = 1
+
+    WALL = 0
     OBJECT = 2
     GOAL = 4
     AGENT = 8   
-    OBJECT_ATTACHED = 16
-    AGENT_ATTACHED = 32
-    R_AGENT = 64
+    OBJECT_ATTACHED = 14
+    AGENT_ATTACHED = 18
     H_AGENT = 9
-    H_AGENT_ATTACHED = 37
-   
+    H_AGENT_ATTACHED = 19
+
 
     def __contains__(self, item):
         return (self.value & item.value) == item.value
 
+
+class ItemKind_encode():
+    """
+    one hot encoding of ItemKind, used for vector observations
+    """
+
+    encoding = {}
+    WALL = 1
+    OBJECT = 2
+    GOAL = 4
+    AGENT = 8   
+    OBJECT_ATTACHED = 14
+    AGENT_ATTACHED = 18
+    H_AGENT = 9
+    H_AGENT_ATTACHED = 19
+
+    encoding[ItemKind.WALL] = WALL
+    encoding[ItemKind.OBJECT] = OBJECT
+    encoding[ItemKind.GOAL] = GOAL
+    encoding[ItemKind.AGENT] = AGENT
+    encoding[ItemKind.H_AGENT] = H_AGENT
+    encoding[ItemKind.OBJECT_ATTACHED] = OBJECT_ATTACHED
+    encoding[ItemKind.AGENT_ATTACHED] = AGENT_ATTACHED
+    encoding[ItemKind.H_AGENT_ATTACHED] = H_AGENT_ATTACHED
 
 class ItemKind_onehot():
     """
     one hot encoding of ItemKind, used for vector observations
     """
     encoding = {}
-    num_itemkind = 9 # the number of distinct item kinds
+    encode_one_hot = {}
+    num_itemkind = 8 # the number of distinct item kinds
 
     wall = np.zeros(shape=(num_itemkind), dtype='int32')
-    object = np.zeros(shape=(num_itemkind), dtype='int32')
+    object_ = np.zeros(shape=(num_itemkind), dtype='int32')
     goal = np.zeros(shape=(num_itemkind), dtype='int32')
     agent = np.zeros(shape=(num_itemkind), dtype='int32')
     object_attached = np.zeros(shape=(num_itemkind), dtype='int32')
     agent_attached = np.zeros(shape=(num_itemkind), dtype='int32')
     h_agent = np.zeros(shape=(num_itemkind), dtype='int32')
-    r_agent = np.zeros(shape=(num_itemkind), dtype='int32')
     h_agent_attached = np.zeros(shape=(num_itemkind), dtype='int32')
 
     wall[0] = 1
-    object[1] = 1
+    object_[1] = 1
     goal[2] = 1
     agent[3] = 1
     h_agent[4] = 1
     object_attached[5] = 1
     agent_attached[6] = 1
-    r_agent[7] = 1
-    h_agent_attached[8] = 1
+    h_agent_attached[7] = 1
 
     encoding[ItemKind.WALL] = wall
-    encoding[ItemKind.OBJECT] = object
+    encoding[ItemKind.OBJECT] = object_
     encoding[ItemKind.GOAL] = goal
     encoding[ItemKind.AGENT] = agent
     encoding[ItemKind.H_AGENT] = h_agent
     encoding[ItemKind.OBJECT_ATTACHED] = object_attached
     encoding[ItemKind.AGENT_ATTACHED] = agent_attached
-    encoding[ItemKind.R_AGENT] = r_agent
     encoding[ItemKind.H_AGENT_ATTACHED] = h_agent_attached
+
+    e_WALL = 1
+    e_OBJECT = 2
+    e_GOAL = 4
+    e_AGENT = 8   
+    e_OBJECT_ATTACHED = 14
+    e_AGENT_ATTACHED = 18
+    e_H_AGENT = 9
+    e_H_AGENT_ATTACHED = 19
+
+    encode_one_hot[0] = np.zeros(shape=(num_itemkind), dtype='int32') #open grid cell
+    encode_one_hot[e_WALL] = wall
+    encode_one_hot[e_OBJECT] = object_
+    encode_one_hot[e_GOAL] = goal
+    encode_one_hot[e_AGENT] = agent
+    encode_one_hot[e_H_AGENT] = h_agent
+    encode_one_hot[e_OBJECT_ATTACHED] = object_attached
+    encode_one_hot[e_AGENT_ATTACHED] = agent_attached
+    encode_one_hot[e_H_AGENT_ATTACHED] = h_agent_attached
+
+
+
 
 class ItemBase(abc.ABC):
     # param loc: (x,y) location in the grid; the origin of the grid (1,1) is the upper left corner;
@@ -166,19 +210,22 @@ class MoveAgent(ItemBase):
 class PickAgent(MoveAgent):
     """Agent supporting pick and move actions"""
 
-    def __init__(self, loc: np.ndarray, kind: str = "robot_agent", impassable: bool = True, collaborative_transport: bool = True, three_grid_object: bool = False):
+    def __init__(self, loc: np.ndarray, kind: str = "robot_agent", impassable: bool = True, target_object = None):
         super().__init__(loc, kind, impassable=impassable)
-        if kind == "heuristic_agent":
+        
+        if "heuristic_agent" in kind:
             self.kind = ItemKind.H_AGENT
-        elif kind == "random_agent":
-            self.kind = ItemKind.R_AGENT
+            
         else:
             self.kind = ItemKind.AGENT
+        
+        self.target_object =  target_object
 
         self.picked_object: ObjectItem = None
-        self.collaborative_transport = collaborative_transport # if true, an object requires two attached agents for transport, otherwise one agent can do the transport
+        
 
-        self.three_grid_object = three_grid_object
+
+
 
     @property
     def attached(self):
@@ -188,49 +235,66 @@ class PickAgent(MoveAgent):
     def pick(self) -> bool:
         if self.attached:
             return False
+
         objs = self._reachable_objects()
         if len(objs) == 0:
             # No attachable objects
             return False
-        self.picked_object = objs[0]
-        self.picked_object.carriers.append(self)
 
-        if self.kind == ItemKind.AGENT:
 
-            self.kind = ItemKind.AGENT_ATTACHED
+        
 
-        elif self.kind == ItemKind.H_AGENT:
+         #object is attached when it is attached by a heuristic and a policy agent
+        #if an agent is already attached to the object and the agent is policy agent then only a heuristic agent can attach and vice versa
+        #loop through possible objects and attached to the feasible one # this condition only in heuristic run
 
-            self.kind = ItemKind.H_AGENT_ATTACHED
+        #TODO when not using driver agent no need of two different agents to attach; any two agents work
 
-        #object is attached when all agents are atttached to the object 
-        if self.collaborative_transport:
+        for obj in objs:
 
-            if len(self.picked_object.carriers) == self.picked_object.num_carriers:
-                #in case of three grid object object is only attached if
-                #heuristic agent attaches to middle object and policy agent attaches to end objects of theree grid object and opposite sides of heuristic attached agent 
-                if self.three_grid_object:
-                    middle_obj_coord = np.median(self.picked_object.loc, axis=0)
-                    policy_agents_coordinates = [carrier.loc  for carrier in self.picked_object.carriers if 'H_AGENT_ATTACHED' not in str(carrier.kind)]
-                    heuristic_agent_coord = [carrier.loc  for carrier in self.picked_object.carriers if 'H_AGENT_ATTACHED' in str(carrier.kind) ] [0] #only one heuristic agent
-                    prop_attached_agents = [coord for coord in policy_agents_coordinates if coord[0] not in [middle_obj_coord[0],heuristic_agent_coord[0]] and 
-                                            coord[1] not in [middle_obj_coord[1],heuristic_agent_coord[1]]]
-                    if len(prop_attached_agents) == len(policy_agents_coordinates):
-                        self.picked_object.kind = ItemKind.OBJECT_ATTACHED
-                    else:
-                        self.picked_object.kind = ItemKind.OBJECT
+            if self.kind == ItemKind.AGENT:
 
-                
+                if len(obj.carriers) > 0 and obj.carriers[0].kind != ItemKind.H_AGENT_ATTACHED:
+                    pass
                 else:
-                    self.picked_object.kind = ItemKind.OBJECT_ATTACHED
-        else:
-            self.picked_object.kind = ItemKind.OBJECT_ATTACHED
-        return True
+                    self.picked_object = obj
+                    self.kind = ItemKind.AGENT_ATTACHED
+                    self.picked_object.carriers.append(self)
+                    if len(self.picked_object.carriers) > 1:
+                        self.picked_object.kind = ItemKind.OBJECT_ATTACHED
+                    return True
+
+
+            elif self.kind == ItemKind.H_AGENT:
+
+                if len(obj.carriers) > 0 and obj.carriers[0].kind != ItemKind.AGENT_ATTACHED:
+                    pass
+                else:
+                    self.picked_object = obj
+                    self.kind = ItemKind.H_AGENT_ATTACHED
+                    self.picked_object.carriers.append(self)
+                    if len(self.picked_object.carriers) > 1:
+                        self.picked_object.kind = ItemKind.OBJECT_ATTACHED
+                    return True
+
+
+    
+            
+            
+
+
+
+
+
+
+    
+        return False
 
     def drop(self) -> bool:
 
         if not self.attached:
             return False
+
         #as drop is done by heuristic agent no need to consider reachable goal plus need drop even when goal is not near for goal area
         # put attached object on a reachable goal
         # maybe better: introduce 4 drop actions: drop-up/down/right/left
@@ -241,8 +305,10 @@ class PickAgent(MoveAgent):
         
 
         #it means the object is not attached to req number of agents; in this case just detach the agent when it drops
-        #object is never dropped to new loc by policy agent it only detaches
-        if self.picked_object.attachable or self.kind == ItemKind.AGENT_ATTACHED:
+
+        #object drop by agent if it is still attachable
+        if self.picked_object.attachable:
+
             
             self.picked_object.carriers.remove(self)
             if self.kind == ItemKind.H_AGENT_ATTACHED:
@@ -251,46 +317,56 @@ class PickAgent(MoveAgent):
                     self.kind = ItemKind.AGENT
             self.picked_object = None
             
-        else:
-            #see later whether we get array of picked object location or not for three grid object
+        else: 
+
+           
             new_loc = self.picked_object.loc
 
-
-        
             self.engine.move([self.picked_object], new_loc)
-            carriers = self.picked_object.carriers
-            self.picked_object.kind = ItemKind.OBJECT
-            for i in range(len(self.picked_object.carriers)):
-                carrier =  carriers[0]
+            carriers = self.picked_object.carriers.copy()
+
+
+            
+            for carrier in carriers:
+ 
+          
                 carrier.picked_object.carriers.remove(carrier)
+                carrier.picked_object.kind = ItemKind.WALL
+                carrier.picked_object = None
+            
+                
                 if carrier.kind == ItemKind.H_AGENT_ATTACHED:
                     carrier.kind = ItemKind.H_AGENT
                 else:
                     carrier.kind = ItemKind.AGENT
-                carrier.picked_object = None
+                
+            
   
-
-        # if len(self.picked_object.carriers) == 0:
-        # self.picked_object.kind = ItemKind.OBJECT
-        # self.picked_object = None
 
         return True
 
     def move(self, direction: str) -> bool:
         """Move the agent and return success of move."""
+
+        #agent shouldn't be able to move if it is attached and the object it has picked is not attached by two agents
+        if self.attached and self.picked_object.attachable:
+            return False
+        
+        #
+        
         off = self.move_offsets.get(direction, None)
         if off is None:
             raise ValueError(f"Invalid direction {direction}")
-        group = [self]
-        #attached the carrier and object both if it is attached so the carrier and object both moves along with the agent carrier
+        group = []
 
-        if self.collaborative_transport:
-            if self.attached and len(self.picked_object.carriers)>1:
+        #attached the carrier and object both if it is attached so the carrier and object both moves along with the agent carrier
+        if self.attached and len(self.picked_object.carriers)>1:
                 group.append(self.picked_object)
                 group.extend(self.picked_object.carriers)
         else:
-            if self.attached:
-                group.append(self.picked_object)
+            group.append(self)
+          
+
         return self.engine.move(group, self.engine.offset_locs(group, off), test=True)
 
     def _reachable_objects(self) -> List[ObjectItem]:

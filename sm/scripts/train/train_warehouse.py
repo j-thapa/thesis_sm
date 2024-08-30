@@ -11,18 +11,12 @@ import argparse
 sys.path.append("../../")
 sys.path.append("../../sm/envs/")
 from sm.config import get_config
-from sm.envs.concert.warehouse_env import WarehouseMultiEnv #import warehoisebev
+from sm.envs.cwarehouse.warehouse_env import WarehouseMultiEnv #import warehoisebev
 from sm.envs.env_wrappers import ShareSubprocVecEnv, ShareDummyVecEnv
 from sm.runner.shared.warehouse_runner import WarehouseRunner as Runner
 from sm.runner.separated.warehouse_runner import WarehouseRunner as Sep_Runner
 
 
-"""Train script for concert Warehouse."""
-
-    # register_env("WarehouseEnv_3",
-    #                   lambda config: WarehouseEnv_3(config, agent_ids=agents, max_steps=70, deterministic_game=False, obs_stacking= False,
-    #                             image_observation=image_observation, action_masking=action_masking, num_objects=2, obstacle = False, goal_area = True, dynamic= False, mode="training",
-    #                              goals_coord = [(8,2),(5,2),(7,4),(2,5),(3,8)]))
 
 def make_train_env(all_args):
     def get_env_fn(rank):
@@ -130,12 +124,13 @@ def parse_args(args, parser):
     parser.add_argument("--mode", type = str, default='training')
     parser.add_argument("--random_agent_order", action='store_true', default=False)
     parser.add_argument("--three_grid_object", action='store_true', default=False)
-    parser.add_argument("--grid_shape", default=(12,12))
+    parser.add_argument("--grid_shape", default=(10,10))
     parser.add_argument("--heuristic_agent", action='store_true', default= True)
     parser.add_argument("--random_agent", action='store_true', default= False)
     parser.add_argument("--goals_coord", default=  [(8,2),(5,2),(7,4),(2,5),(3,8)])
     parser.add_argument("--use_single_network", action='store_true', default=False)
     parser.add_argument("--partial_observation", action='store_true', default=True)
+    parser.add_argument("--exp_name", type = str , default="exps")
 
 
     #aadd here params
@@ -171,7 +166,7 @@ def main(args):
         torch.set_num_threads(all_args.n_training_threads)
 
     run_dir = Path(os.path.split(os.path.dirname(os.path.abspath(__file__)))[
-                       0] + "/results") / all_args.env_name / all_args.algorithm_name / f"shape_{all_args.grid_shape[0]}_ag_{all_args.pair_agents}_obj_{all_args.num_objects}"
+                       0] + "/results") / all_args.env_name / all_args.algorithm_name / f"shape_{all_args.grid_shape[0]}_ag_{all_args.pair_agents}_obj_{all_args.num_objects}"/all_args.exp_name
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 

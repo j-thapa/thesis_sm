@@ -202,7 +202,7 @@ class MujocoMulti(MultiAgentEnv):
         else:
             # return len(self.get_obs()[0])
             
-            print(max([len(self.get_obs_agent(agent_id)) for agent_id in range(self.n_agents)]))
+
             return max([len(self.get_obs_agent(agent_id)) for agent_id in range(self.n_agents)])
 
     def get_state(self, team=None):

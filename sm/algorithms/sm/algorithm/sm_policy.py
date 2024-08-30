@@ -20,6 +20,7 @@ class SMPolicy:
 
     def __init__(self, args, obs_space, cent_obs_space, act_space, num_agents, device=torch.device("cpu")):
         self.device = device
+        self.args = args
         self.algorithm_name = args.algorithm_name
         self.lr = args.lr
         self.opti_eps = args.opti_eps
@@ -61,6 +62,8 @@ class SMPolicy:
             from sm.algorithms.sm.algorithm.marwkv_v5 import MultiAgentRWKV as SM
         elif self.algorithm_name == "marwkv_v4":
             from sm.algorithms.sm.algorithm.marwkv_v4 import MultiAgentRWKV as SM
+        elif self.algorithm_name == "mamamba":
+            from sm.algorithms.sm.algorithm.ma_mamba import MultiAgentMamba as SM
         else:
             raise NotImplementedError
 
@@ -88,10 +91,10 @@ class SMPolicy:
         print(f'Total params: {Total_params}')
         print(f'Trainable params: {Trainable_params}')
         print(f'Non-trainable params: {NonTrainable_params}')
-        # time.sleep(9)
+        time.sleep(5)
 
-        # print("loading policy")
-        # model_dir = "/system/user/studentwork/thapa/rware/sm/scripts/results/WarehouseEnv/mat/run66/models/seq_model_1999.pt"
+        # print("loading policy here for MAM MuJoCo")
+        # model_dir = "/home/PROFACTOR.LOCAL/jthapa/rware/sm/scripts/results/mujoco/HalfCheetah-v2/mat/single_mat_2/run2/models/seq_model_2499.pt"
         # self.restore(model_dir)
 
 
@@ -126,7 +129,13 @@ class SMPolicy:
         :return rnn_states_actor: (torch.Tensor) updated actor network RNN states.
         :return rnn_states_critic: (torch.Tensor) updated critic network RNN states.
         """
+        #code for adding object observation as sequence
+        # if self.args.env_name == "WarehouseEnv":
 
+        #     cent_obs = cent_obs.reshape(-1, self.num_agents + self.args.num_objects, self.share_obs_dim)
+        #     obs = obs.reshape(-1, self.num_agents + self.args.num_objects, self.obs_dim)
+            
+        # else:
 
         cent_obs = cent_obs.reshape(-1, self.num_agents, self.share_obs_dim)
         obs = obs.reshape(-1, self.num_agents, self.obs_dim)
@@ -159,8 +168,17 @@ class SMPolicy:
         """
 
 
+        # if self.args.env_name == "WarehouseEnv":
+
+        #     cent_obs = cent_obs.reshape(-1, self.num_agents + self.args.num_objects, self.share_obs_dim)
+        #     obs = obs.reshape(-1, self.num_agents + self.args.num_objects, self.obs_dim)
+            
+        # else:
+
         cent_obs = cent_obs.reshape(-1, self.num_agents, self.share_obs_dim)
         obs = obs.reshape(-1, self.num_agents, self.obs_dim)
+
+
         if available_actions is not None:
             available_actions = available_actions.reshape(-1, self.num_agents, self.act_dim)
 
@@ -188,7 +206,14 @@ class SMPolicy:
         :return action_log_probs: (torch.Tensor) log probabilities of the input actions.
         :return dist_entropy: (torch.Tensor) action distribution entropy for the given inputs.
         """
- 
+
+        # if self.args.env_name == "WarehouseEnv":
+
+        #     cent_obs = cent_obs.reshape(-1, self.num_agents + self.args.num_objects, self.share_obs_dim)
+        #     obs = obs.reshape(-1, self.num_agents + self.args.num_objects, self.obs_dim)
+        # else:
+
+    
         cent_obs = cent_obs.reshape(-1, self.num_agents, self.share_obs_dim)
         obs = obs.reshape(-1, self.num_agents, self.obs_dim)
         actions = actions.reshape(-1, self.num_agents, self.act_num)

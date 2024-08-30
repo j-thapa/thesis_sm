@@ -76,6 +76,7 @@ def parse_args(args, parser):
     parser.add_argument("--use_mustalive", action='store_false', default=True)
     parser.add_argument("--add_center_xy", action='store_false', default=True)
     parser.add_argument("--random_agent_order", action='store_true', default=False)
+  
 
     all_args = parser.parse_known_args(args)[0]
 
@@ -106,7 +107,7 @@ def main(args):
         torch.set_num_threads(all_args.n_training_threads)
 
     run_dir = Path(os.path.split(os.path.dirname(os.path.abspath(__file__)))[
-                       0] + "/results") / all_args.env_name / all_args.map_name / all_args.algorithm_name / all_args.experiment_name
+                       0] + "/results") / all_args.env_name / all_args.map_name / all_args.algorithm_name / all_args.experiment_name/ f"lr_{all_args.lr}" 
     if not run_dir.exists():
         os.makedirs(str(run_dir))
 

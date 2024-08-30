@@ -127,16 +127,10 @@ class GridEngine:
 
     def offset_locs(self, items: List[ItemBase], off: np.ndarray) -> np.ndarray:
         """Computes the new locations for group of items moved by a common offset."""
- 
-        # Reshape the (2,) arrays to (1, 2) and keep the (3, 2) as is
+        locs = np.stack([o.loc for o in items], 0)
+        newlocs = locs + off
+        return newlocs
 
-        locs = np.array([(arr.loc + off).reshape(1, 2) if arr.loc.ndim == 1 else arr.loc + off for arr in items])
-        if locs.shape[0] == 1:
-            locs = np.squeeze(locs, axis = 0)
-        # print(locs.shape)
-
-        #Concatenate all arrays along axis 0 to form the (6,2) array
-        # locs = np.concatenate(locs, axis=0)
 
 
      
