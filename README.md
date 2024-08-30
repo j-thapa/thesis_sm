@@ -1,8 +1,11 @@
+ This repository is part of a academic course Masters Thesis, JKU.
 
 
-This repository contains implementation of MAT, forked from https://github.com/PKU-MARL/Multi-Agent-Transformer.git and implementation of MARWKV (implementation of RWKV architecture for sequence modelling in MARL) which are available as algorithm options for MAT; rwkv code implementation was adpated from [[rwkv github code]](https://github.com/BlinkDL/RWKV-LM). This repository is part of a academic course Practical Work in AI (Master).
+This repository builds on the implementation of MAT repository https://github.com/PKU-MARL/Multi-Agent-Transformer.git 
+We have included two new algorithms/architectures MAM and MARWKV build on Mamaba and RWKV. We have also added a new environment called Collaborative Warehouse for benchmarking purpose.
 
-**For more details, one can go through the report uploaded in the same repository.**
+
+**For more details, one can go through the thesis report which will be uploaded in the same repository.**
 
 
 
@@ -31,44 +34,18 @@ Or you could install them manually to other path you like, just follow here: htt
 ### Bi-DexHands 
 Please following the instructios in https://github.com/PKU-MARL/DexterousHands. 
 
+### Collaborative Warehouse
+Should run with the existing installation if some issue then can also follow installation from https://github.com/j-thapa/collaborative_warehouse.git
+
+### MAMBA
+
+To use selective scan used in Mamba which uses specific CUDA code, one have to installed Mamba following the official repository https://github.com/state-spaces/mamba.git
+
 
 
 ## How to run
-When the environment is ready, one could run shells in the "scripts" folder with algo="mat" or algo="marwkv_v4". For example:
+When the environment is ready, one could run shells in the "scripts" folder with algo="mat" or algo="marwkv_v4" or algo="mamamba". For example:
 ``` Bash
 ./train_mujoco.sh  # run MAT/MARWKV on Multi-agent MuJoCo
 ```
 If you would like to change the configs of experiments, you could modify sh files or look for config.py for more details.
-
-## MAT and MARWKV architecture
-*MAT encoder-decoder*
-![MAT](images/MAT_arch.JPG)
-
-*MARWKV encoder*
-![MARWKV encoder](images/encoder.png)
-
-*MARWKV decoder*
-![MARWKV decoder](images/decoder.jpg)
-
-
-## Some experiments results
-
-### SMAC challenge
-*Performance of MAT and MARWKV on hard SMAC maps*
-![Performance of MAT and MARWKV hard SMAC maps](images/hard_smac.jpg)
-
-*Performance of MAT and MARWKV on very hard SMAC maps*
-![Performance of MAT and MARWKV on very hard SMAC maps](images/hard_plus_smac.JPG)
-
-### MuJoCo challenge
-*Performance on halfcheetah challenge*
-![Performance on halfcheetah challenge](images/mujoco_mat_rwkv.jpg)
-
-*Performance on halfcheetah with disabled joints*
-![Performance on halfcheetah with disabled joints](images/disabled_rwkv.JPG)
-
-
-### Bidex hands Challenge
-*Performance on bidex hands challenges*
-![Performance on bidex hands challenges](images/bidex2.JPG)
-
